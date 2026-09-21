@@ -1,0 +1,1913 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Captación UCINE</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap">
+<style>
+:root{
+  color-scheme: light;
+  --plane:#F4F5F7; --surface:#FFFFFF; --surface-2:#F7F8FA;
+  --ink:#191C22; --ink-2:#5A6472; --muted:#8B94A3;
+  --grid:#EDEFF3; --axis:#DDE1E8; --hair:#E7EAEF;
+  /* Color de marca del cliente. Cambiar acá y se propaga a todo el tablero. */
+  --marca:#C8102E; --marca-soft:rgba(200,16,46,.08);
+  --s-b:#2a78d6; --s-c:#e87ba4; --s-a:#1baf7a;
+  /* Serie por canal. El orden está validado para daltonismo: no reordenar
+     ni agregar un séptimo color — el séptimo canal se pliega en "Otros". */
+  --c1:#2a78d6; --c2:#eb6834; --c3:#1baf7a; --c4:#4a3aa7; --c5:#eda100;
+  --o1:#86b6ef; --o2:#5598e7; --o3:#2a78d6; --o4:#184f95;
+  --sube:#14804A; --baja:#C4283C; --neutro:#8B94A3;
+  --good:#14804A; --warn:#B7791F; --crit:#C4283C;
+  --good-ink:#14804A; --warn-ink:#B7791F; --crit-ink:#C4283C;
+  --r:14px;
+  --sh:0 1px 2px rgba(16,24,40,.05);
+  --ff-ui:"Figtree","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --ff-dp:"Figtree","Helvetica Neue",Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);font-family:var(--ff-ui);
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2{margin:0}
+:focus-visible{outline:2px solid var(--marca);outline-offset:2px;border-radius:6px}
+
+.wrap{max-width:1360px;margin:0 auto;padding:20px 22px 70px;
+  display:flex;flex-direction:column;gap:16px}
+
+/* ── encabezado ── */
+.head{background:var(--surface);border:1px solid var(--hair);border-left:5px solid var(--marca);
+  border-radius:var(--r);box-shadow:var(--sh);padding:16px 20px;
+  display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.head .name{font-size:19px;font-weight:800;letter-spacing:-.01em}
+.head .sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+.head .meta{margin-left:auto;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;
+  color:var(--ink-2);background:var(--surface-2);border:1px solid var(--hair);
+  border-radius:999px;padding:5px 13px 5px 11px;white-space:nowrap}
+.chip .estado{font-weight:500;opacity:.85}
+/* conectado: verde lleno, con halo, para que se distinga de un vistazo */
+.chip.c-ok{background:#E8F6EF;border-color:#A9DCC5;color:#0E6B41}
+.chip.c-mal{background:#FBECEE;border-color:#F0BCC3;color:#A21C2C}
+.chip.c-off{background:transparent;border-style:dashed;border-color:#D6DBE3;color:var(--muted);font-weight:500}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.dot.ok{background:var(--good);box-shadow:0 0 0 3px rgba(20,128,74,.18)}
+.dot.warn{background:var(--warn);box-shadow:0 0 0 3px rgba(183,121,31,.18)}
+.dot.off{width:8px;height:8px;background:transparent;border:1.5px solid #C3CAD5;box-shadow:none}
+.dot.mal{background:var(--crit);box-shadow:0 0 0 3px rgba(196,40,60,.18)}
+.stamp{font-size:11.5px;color:var(--muted)}
+
+/* ── controles ── */
+.barra{background:var(--surface);border:1px solid var(--hair);border-radius:var(--r);
+  box-shadow:var(--sh);padding:12px 14px;display:flex;flex-direction:column;gap:11px}
+.fila{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.fila .rot{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);margin-right:6px}
+.tab{border:1px solid var(--hair);background:var(--surface-2);color:var(--ink-2);
+  font-family:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px;
+  cursor:pointer;transition:background .12s,color .12s,border-color .12s}
+.tab:hover{background:#EDEFF3;color:var(--ink)}
+.tab[aria-current="page"]{background:var(--ink);border-color:var(--ink);color:#fff}
+
+/* ── navegación lateral ── */
+.cuerpo{display:grid;grid-template-columns:216px minmax(0,1fr);gap:16px;align-items:start}
+.paginas{min-width:0;display:flex;flex-direction:column;gap:16px}
+.lado{background:var(--surface);border:1px solid var(--hair);border-radius:var(--r);
+  box-shadow:var(--sh);padding:13px 11px;display:flex;flex-direction:column;gap:4px;
+  position:sticky;top:16px}
+.lado .rot{margin:2px 0 7px 5px}
+.lado .tab{width:100%;text-align:left;border-radius:9px;border-color:transparent;
+  background:transparent;padding:9px 11px;font-size:13px;line-height:1.25}
+.lado .tab:hover{background:var(--surface-2);color:var(--ink)}
+.lado .tab[aria-current="page"]{background:var(--marca-soft);border-color:transparent;
+  color:var(--marca);font-weight:700;box-shadow:inset 3px 0 0 var(--marca)}
+@media (max-width:900px){
+  .cuerpo{grid-template-columns:1fr}
+  .lado{position:static;flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px;padding:12px 14px}
+  .lado .rot{margin:0 6px 0 0}
+  .lado .tab{width:auto;border-radius:999px;background:var(--surface-2);border-color:var(--hair);padding:7px 14px}
+  .lado .tab[aria-current="page"]{background:var(--ink);color:#fff;box-shadow:none}
+}
+.mes{border:1px solid var(--hair);background:var(--surface-2);color:var(--ink-2);
+  font-family:inherit;font-size:12.5px;font-weight:600;padding:5px 13px;border-radius:999px;
+  cursor:pointer;min-width:52px}
+.mes:hover:not(:disabled){background:#EDEFF3;color:var(--ink)}
+.mes[aria-pressed="true"]{background:var(--marca);border-color:var(--marca);color:#fff}
+.mes:disabled{opacity:.34;cursor:default}
+.anio{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.06em;
+  margin:0 4px 0 8px}
+
+/* ── KPI ── */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:14px}
+.kpi{background:var(--surface);border:1px solid var(--hair);border-radius:var(--r);
+  box-shadow:var(--sh);padding:15px 17px 16px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.kpi .k{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.kpi .v{font-size:31px;font-weight:800;letter-spacing:-.03em;line-height:1.15;margin-top:4px}
+.kpi.hero .v{font-size:38px;color:var(--marca)}
+.kpi .d{font-size:12px;color:var(--muted);margin-top:1px}
+.kpi .deltas{display:flex;gap:14px;flex-wrap:wrap;margin-top:9px;padding-top:9px;
+  border-top:1px solid var(--hair);font-size:11.5px;color:var(--muted)}
+.kpi .deltas b{font-weight:700}
+.up{color:var(--sube)} .down{color:var(--baja)} .flat{color:var(--neutro)}
+
+.origen{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.org{border:1px solid var(--hair);border-radius:11px;padding:12px 14px;background:var(--surface-2);
+  display:flex;flex-direction:column;gap:2px;border-left:4px solid var(--org)}
+.org .t{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.org .n{font-size:25px;font-weight:800;letter-spacing:-.02em;line-height:1.2;margin-top:2px}
+.org .m{font-size:12px;color:var(--ink-2)}
+
+/* ── tarjetas ── */
+.card{background:var(--surface);border:1px solid var(--hair);border-radius:var(--r);
+  box-shadow:var(--sh);padding:16px 18px 18px;display:flex;flex-direction:column;gap:13px;min-width:0}
+.card > header{display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap}
+.card h2{font-size:15px;font-weight:700;letter-spacing:-.01em}
+.card .hint{font-size:12px;color:var(--muted);max-width:78ch;margin:4px 0 0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+.chartbox{position:relative;height:260px} .chartbox.tall{height:330px}
+.legend{display:flex;gap:15px;flex-wrap:wrap;font-size:12px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.swatch{width:11px;height:11px;border-radius:3px;flex:none}
+.pill{font-size:11px;font-weight:600;color:var(--muted);background:var(--surface-2);
+  border:1px solid var(--hair);border-radius:999px;padding:4px 11px;white-space:nowrap}
+
+/* ── tablas ── */
+.tw{overflow-x:auto;margin:0 -18px;padding:0 18px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:right;padding:8px 11px;white-space:nowrap;border-bottom:1px solid var(--hair)}
+td{font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left;white-space:normal;min-width:165px;font-weight:500}
+thead th{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--muted);border-bottom:1px solid var(--axis);vertical-align:bottom;padding-bottom:7px}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:var(--surface-2)}
+tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;padding-top:10px}
+.sub{color:var(--muted);font-size:11.5px;font-weight:400}
+.bartrack{background:var(--grid);border-radius:3px;height:5px;margin-top:5px;overflow:hidden}
+.bar{display:block;height:5px;border-radius:3px;background:var(--o3)}
+
+/* ── embudo ── */
+/* ── embudo madre ── */
+/* Las bandas van gruesas y casi pegadas: así los cuatro pasos se leen como un
+   solo cuerpo que se angosta — un embudo — y no como cuatro barras sueltas. */
+.embudom{display:flex;flex-direction:column;gap:6px;align-items:center;padding:6px 0 2px}
+.epaso{width:100%;display:flex;flex-direction:column;align-items:center;gap:5px}
+.ecab{width:100%;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.ecab .enom{font-size:12.5px;font-weight:600;color:var(--ink);min-width:172px}
+.ecab .eval{font-size:15px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+.ecab .esig{font-size:11.5px;color:var(--muted);margin-left:auto}
+.epista{display:flex;height:48px;border-radius:8px;overflow:hidden;background:var(--grid);
+  transition:width .2s}
+.eseg{height:100%;box-shadow:0 0 0 1px var(--surface) inset;min-width:2px;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.eseg:not(:last-child){margin-right:2px}
+@media (max-width:640px){ .ecab .enom{min-width:0} .ecab .esig{margin-left:0;width:100%} }
+
+.funnel{display:flex;flex-direction:column;gap:4px}
+.fstep{display:grid;grid-template-columns:156px minmax(0,1fr) 78px 78px;gap:13px;align-items:center}
+.fstep .sigue{font-size:12px;font-weight:700;color:var(--sube);text-align:right;font-variant-numeric:tabular-nums}
+.fstep .sigue.first{color:var(--muted);font-weight:400}
+.fstep .track.vacio{background:repeating-linear-gradient(135deg,var(--grid) 0 6px,transparent 6px 12px);
+  display:flex;align-items:center;padding-left:11px;font-size:12px;color:var(--muted)}
+.fstep .lab{font-size:12.5px;color:var(--ink-2);font-weight:500}
+.fstep .track{background:var(--grid);border-radius:7px;height:28px;overflow:hidden}
+.fstep .fill{height:100%;border-radius:7px;display:flex;align-items:center;padding-left:11px;
+  color:#fff;font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.fstep .drop{font-size:12px;font-weight:600;color:var(--baja);text-align:right;font-variant-numeric:tabular-nums}
+.fstep .drop.first{color:var(--muted);font-weight:400}
+.fleyenda{display:grid;grid-template-columns:156px minmax(0,1fr) 78px 78px;gap:13px;
+  margin-top:5px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.fleyenda span{text-align:right}
+
+/* ── avisos ── */
+.note{background:var(--surface-2);border:1px solid var(--hair);border-left:3px solid var(--marca);
+  border-radius:9px;padding:13px 15px;font-size:12.5px;color:var(--ink-2);max-width:90ch}
+.note strong{color:var(--ink);font-weight:700}
+/* Glosario del embudo: qué cuenta cada paso, en palabras de quien no mide. */
+.glosario{margin-top:18px;border-top:1px solid var(--hair);padding-top:14px}
+.glosario h3{font-size:13px;font-weight:700;color:var(--ink);margin:0 0 10px}
+.glosario dl{display:grid;grid-template-columns:170px minmax(0,1fr);gap:9px 18px;margin:0}
+.glosario dt{font-size:12.5px;font-weight:600;color:var(--ink)}
+.glosario dd{margin:0;font-size:12.5px;line-height:1.5;color:var(--ink-2)}
+@media (max-width:640px){ .glosario dl{grid-template-columns:1fr} .glosario dd{margin-bottom:6px} }
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;
+  border-radius:999px;padding:3px 10px;background:var(--surface-2);border:1px solid var(--hair)}
+.tag.g{color:var(--good)} .tag.w{color:var(--warn)}
+.tag.c{color:var(--crit)} .tag.n{color:var(--muted)}
+.vacio{padding:30px 20px;text-align:center;color:var(--muted);font-size:13px;
+  border:1px dashed var(--axis);border-radius:11px;background:var(--surface-2)}
+.vacio strong{display:block;color:var(--ink-2);font-weight:700;margin-bottom:5px;font-size:14px}
+.vacio code{background:var(--surface);border:1px solid var(--hair);padding:1px 6px;
+  border-radius:5px;font-size:12px}
+
+.page{display:none;flex-direction:column;gap:16px}
+.page.on{display:flex}
+.phead h1{font-size:20px;font-weight:800;letter-spacing:-.02em}
+.phead p{margin:5px 0 0;color:var(--ink-2);font-size:13px;max-width:82ch}
+
+#cargando{padding:80px 24px;text-align:center;color:var(--muted)}
+#cargando .t{font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.02em}
+#error{margin:24px auto;max-width:760px;padding:20px;border-radius:var(--r);background:var(--surface);
+  border:1px solid var(--hair);border-left:4px solid var(--crit);font-size:13px;color:var(--ink-2)}
+#error code{background:var(--surface-2);padding:2px 6px;border-radius:5px;word-break:break-all;font-size:12px}
+
+@media (max-width:760px){
+  .wrap{padding:14px 12px 50px}
+  .kpi .v{font-size:26px} .kpi.hero .v{font-size:31px}
+  .fstep,.fleyenda{grid-template-columns:112px minmax(0,1fr) 62px 62px}
+}
+</style>
+</head>
+<body>
+
+<div id="cargando"><div class="t">Captación UCINE</div><p>Leyendo los datos…</p></div>
+<div id="error" hidden></div>
+
+<div class="wrap" id="app" hidden>
+
+  <header class="head">
+    <div>
+      <div class="name">Universidad del Cine</div>
+      <div class="sub">Tablero de captación de alumnos · UCINE / FUC</div>
+    </div>
+    <div class="meta" id="chips"></div>
+  </header>
+
+  <div class="barra">
+    <div class="fila" id="meses"><span class="rot">Período</span></div>
+  </div>
+
+  <div class="cuerpo">
+  <nav class="lado" id="tabs" aria-label="Secciones">
+    <span class="rot">Sección</span>
+    <button class="tab" data-p="p1" aria-current="page">Resumen</button>
+    <button class="tab" data-p="p2">Qué carrera tracciona</button>
+    <button class="tab" data-p="p3">Embudo del formulario</button>
+    <button class="tab" data-p="p4">Canales de contacto</button>
+    <button class="tab" data-p="p5">Medios pagos</button>
+    <button class="tab" data-p="p6">Anexo técnico</button>
+  </nav>
+
+  <div class="paginas">
+
+  <!-- 1 -->
+  <section class="page on" id="p1">
+    <div class="phead"><h1>Resumen</h1>
+      <p>Las consultas del período y de dónde vienen.</p></div>
+    <div class="kpis" id="k1"></div>
+    <div id="p1-nota"></div>
+    <div id="p1-embudo"></div>
+    <div id="p1-insc"></div>
+    <div class="card">
+      <header><div><h2>De dónde vienen las consultas</h2>
+        <p class="hint">Cada consulta se atribuye al canal de la sesión en la que se envió el
+        formulario: último clic no directo, la regla estándar de Analytics.</p></div>
+        <div class="legend">
+          <span><i class="swatch" style="background:var(--s-a)"></i>Sin publicidad</span>
+          <span><i class="swatch" style="background:var(--s-c)"></i>De publicidad</span>
+        </div></header>
+      <div class="origen" id="origen"></div>
+      <div class="grid2" style="gap:22px">
+        <div class="chartbox"><canvas id="c-canal"></canvas></div>
+        <div class="tw"><table>
+          <thead id="t-canal-cab"></thead>
+          <tbody id="t-canal"></tbody><tfoot id="t-canal-tot"></tfoot>
+        </table></div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="card"><header><div><h2>Consultas por día</h2>
+        <p class="hint">Cada barra es un día, partida entre lo que trajo la publicidad y
+        lo que llegó solo.</p></div></header>
+        <div class="chartbox"><canvas id="c-dia"></canvas></div></div>
+      <div class="card"><header><div><h2>Sesiones por día</h2>
+        <p class="hint">El tráfico que produjo esas consultas, abierto por canal. La
+        publicidad va en una sola línea; lo que llega solo, separado por de dónde viene.</p></div></header>
+        <div class="chartbox"><canvas id="c-ses"></canvas></div></div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="page" id="p2">
+    <div class="phead"><h1>Qué carrera tracciona</h1>
+      <p>De la curiosidad al formulario enviado, carrera por carrera.</p></div>
+    <div id="p2-cuerpo"></div>
+    <div id="p2-paginas"></div>
+  </section>
+
+  <!-- 3 -->
+  <section class="page" id="p3">
+    <div class="phead"><h1>Embudo del formulario</h1>
+      <p>De cada 100 que abren el formulario, cuántas aprietan enviar y cuántas llegan
+         efectivamente a ser una consulta.</p></div>
+    <div class="kpis" id="k3"></div>
+    <div class="card"><header><h2>El embudo completo</h2></header>
+      <div class="funnel" id="f-total"></div>
+      <div id="f-total-nota"></div>
+      <div class="glosario"><h3>Qué cuenta cada paso</h3><dl>
+        <dt>Abrieron</dt>
+        <dd>La persona empezó a mirar el formulario. En las páginas de carrera, cuando toca
+          <strong>“+ INFO”</strong> y se abre el recuadro naranja. En la página de consultas,
+          donde el formulario ya está a la vista, cuando hace clic en un campo o empieza a
+          escribir. Cada persona cuenta una sola vez por visita, aunque toque varios campos.</dd>
+        <dt>Apretaron enviar</dt>
+        <dd>Tocaron el botón <strong>ENVIAR</strong>. Todavía no es una consulta: puede haber
+          faltado un dato, el mail puede estar mal escrito o el envío puede haber fallado.</dd>
+        <dt>Consulta confirmada</dt>
+        <dd>El sitio recibió la consulta completa y la guardó. Es la única que cuenta como
+          consulta en todo el tablero.</dd>
+        <dt>Se inscribieron</dt>
+        <dd>Lo carga a mano el equipo de admisión en la hoja de cálculo. No sale del sitio,
+          y por eso se lee aparte: ver la nota de arriba.</dd>
+      </dl>
+      <p class="hint" style="margin-top:12px">En la página de consultas, “Abrieron” y
+        “Apretaron enviar” se empezaron a medir con el ajuste de septiembre de 2026. Los meses
+        anteriores muestran pocas aperturas y porcentajes que no cierran: no es que la gente no
+        abría el formulario, es que no se estaba contando.</p></div></div>
+    <div id="p3-origen"></div>
+    <div id="p3-form"></div>
+  </section>
+
+  <!-- 4 -->
+  <section class="page" id="p4">
+    <div class="phead"><h1>Canales de contacto</h1>
+      <p>Por dónde prefiere escribirnos la gente que no llena el formulario.</p></div>
+    <div class="note"><strong>Nada de esta página se suma a las consultas.</strong>
+      Un clic a WhatsApp es intención de escribir, no una conversación.</div>
+    <div class="card">
+      <header><h2>Clics por canal</h2><span class="pill" id="ct-total">—</span></header>
+      <div class="chartbox"><canvas id="c-cont"></canvas></div>
+      <div class="tw"><table>
+        <thead><tr><th>Canal</th><th>Dónde se hace el clic</th><th>Clics</th><th>Participación</th></tr></thead>
+        <tbody id="t-cont"></tbody></table></div>
+      <div class="note">Las ubicaciones salen del nombre de cada etiqueta en el gestor de
+        etiquetas. Si alguna se movió de lugar en el sitio, hay que corregirla acá también:
+        el tablero no puede darse cuenta solo.</div>
+    </div>
+    <div id="p4-deriva"></div>
+  </section>
+
+  <!-- 5 -->
+  <section class="page" id="p5">
+    <div class="phead"><h1>Medios pagos</h1>
+      <p>Qué está haciendo la inversión. Google llega por Analytics; Meta llega por su
+         propia API, con sus propios números.</p></div>
+    <div id="p5-cuerpo"></div>
+    <div id="p5-meta"></div>
+  </section>
+
+  <!-- 6 -->
+  <section class="page" id="p6">
+    <div class="phead"><h1>Anexo técnico</h1>
+      <p>Si alguna señal se enciende, los números de las otras cinco páginas están en duda
+         hasta que se resuelva.</p></div>
+    <div class="card"><header><h2>Señales</h2></header>
+      <div class="tw"><table>
+        <thead><tr><th>Señal</th><th>Ahora</th><th>Alarma</th><th>Qué significa</th></tr></thead>
+        <tbody id="t-salud"></tbody></table></div></div>
+    <div class="card"><header><h2>Estado de cada informe</h2></header>
+      <div class="tw"><table>
+        <thead><tr><th>Informe</th><th>Filas</th><th>Estado</th><th>Detalle</th></tr></thead>
+        <tbody id="t-estado"></tbody></table></div></div>
+    <div id="p6-meta"></div>
+  </section>
+
+  </div><!-- /paginas -->
+  </div><!-- /cuerpo -->
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var URL_DATOS = 'https://script.google.com/macros/s/AKfycby76M3Kq1WuAPU1qWLb1gKz65tcTN62cPEWKT0Xw99vzPGrkYKyDAd2z2kInSHKmfbY6A/exec';
+
+  var nf  = new Intl.NumberFormat('es-AR');
+  var nf1 = new Intl.NumberFormat('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1});
+  var n     = function(v){ return nf.format(Math.round(v)); };
+  var money = function(v){ return '$' + nf.format(Math.round(v)); };
+  var pc    = function(v){ return nf1.format(v) + '%'; };
+  var $     = function(id){ return document.getElementById(id); };
+  var MESN  = ['','ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+  var D = null, mes = 'todo', charts = {}, listaMeses = [];
+
+  /* nombre del evento · cómo se llama · qué es en realidad · dónde se hace el clic */
+  var CONTACTO = [
+    ['clic_whatsapp_flotante','WhatsApp flotante','Intención de escribir. La conversación puede no existir',
+     'El botón verde fijo abajo a la derecha, presente en todo el sitio'],
+    ['clic_becas_form','Becas → Microsoft Forms','Sale del sitio: no sabemos si completó',
+     'El link de la sección de becas que lleva a un formulario de Microsoft, fuera de ucine.edu.ar'],
+    ['clic_telefono','Teléfono','Intención de llamar, no llamada',
+     'Cualquier número con link de llamada — pie de página y sección de contacto'],
+    ['clic_email','Email','Abre el cliente de correo',
+     'Cualquier dirección de mail con link, que abre el programa de correo de la persona'],
+    ['clic_newsletter','Newsletter','Suscripción, no consulta',
+     'El alta al newsletter del pie de página'],
+    ['clic_btn_pedirinfo','Botón “Pedir información” (home)','Clic en el botón, antes de abrir el formulario',
+     'El botón PEDIR INFORMACIÓN de la portada de la home, debajo de “Ingreso marzo 2027”']
+  ];
+
+  /* El backend rearma el JSON cada hora. La página lo vuelve a pedir cada
+     15 minutos, así que un tablero abierto en una pantalla no se queda viejo.
+     El primer pedido muestra el error si falla; los siguientes no lo tocan:
+     una caída pasajera de red no tiene por qué borrar lo que ya se está viendo. */
+  var REFRESCO_MIN = 15;
+
+  function traer(primero){
+    return fetch(URL_DATOS + (URL_DATOS.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now())
+      .then(function(r){ if(!r.ok) throw new Error('El servidor respondió ' + r.status); return r.json(); })
+      .then(function(d){ primero ? arrancar(d) : refrescar(d); })
+      .catch(function(e){
+        if(!primero) return;
+        $('cargando').hidden = true; $('error').hidden = false;
+        $('error').innerHTML = '<strong>No pude leer los datos.</strong><br>' +
+          'El navegador dice: <code>' + e.message + '</code><br><br>' +
+          'Si abrís la dirección en una pestaña y ahí se ven los números, es la restricción ' +
+          'del navegador para archivos abiertos desde el escritorio: se resuelve publicando ' +
+          'esta página en un servidor.';
+      });
+  }
+
+  /** Recarga sin resetear lo que la persona estaba mirando: misma página, mismo mes. */
+  function refrescar(d){
+    D = d;
+    sello();
+    destruir();
+    render();
+  }
+
+  traer(true);
+  setInterval(function(){ traer(false); }, REFRESCO_MIN * 60000);
+
+  /* ── filtros ── */
+  function enMes(f, m){ m = m || mes; return m === 'todo' || String(f).slice(0,7) === m; }
+  function filtrar(tabla, m){ return (D[tabla]||[]).filter(function(r){ return enMes(r.fecha, m); }); }
+  function sumar(tabla, campo, cond, m){
+    return filtrar(tabla, m).reduce(function(s,r){
+      return (!cond || cond(r)) ? s + (Number(r[campo])||0) : s; }, 0);
+  }
+  function porClave(tabla, clave, campo, cond, m){
+    var o = {};
+    filtrar(tabla, m).forEach(function(r){
+      if(cond && !cond(r)) return;
+      o[r[clave]] = (o[r[clave]]||0) + (Number(r[campo])||0);
+    });
+    return o;
+  }
+  function evento(nombre, m){ return sumar('eventos','n',function(r){ return r.evento===nombre; }, m); }
+  function esPago(canal){ return (D.canales_pagos||[]).indexOf(canal) >= 0; }
+  function metaOk(){ return !!(D.fuentes && D.fuentes.meta && D.fuentes.meta.estado === 'ok'); }
+  function inscOk(){ return !!(D.fuentes && D.fuentes.inscriptos && D.fuentes.inscriptos.estado === 'ok'); }
+  function inscriptos(m){ return inscOk() ? sumar('inscriptos','cantidad',null,m) : 0; }
+  /** Inscriptos repartidos por el canal de Analytics al que equivale su origen.
+   *  La columna "equivale" de la hoja de cálculo es el único puente entre lo que
+   *  se carga a mano y lo que mide Analytics: sin ella los inscriptos son un
+   *  total suelto que no se puede cruzar con nada. */
+  function inscPorCanal(m){
+    return inscOk() ? porClave('inscriptos','equivale','cantidad',
+      function(r){ return !!r.equivale; }, m) : {};
+  }
+  /* ── Desde cuándo el embudo es comparable ────────────────────────────
+   * La consulta confirmada (generate_lead) se mide bien recién desde el
+   * 31-ago-2026, con la versión 18 de GTM. Antes casi no existe, así que un
+   * embudo que tome junio o julio pone meses de aperturas contra días de
+   * consultas y da porcentajes que no significan nada. Los embudos arrancan en
+   * esta fecha aunque se elija "Todo el período", y lo dicen.
+   * Las tarjetas de números sueltos (consultas, sesiones, inversión) no se
+   * recortan: ahí no se divide una cosa por otra.
+   */
+  var MEDICION_DESDE = '2026-08-31';
+  var FORMS_CONOCIDOS = ['popup_carrera','pagina_consultas'];
+  function desdeMedicion(filas){
+    return filas.filter(function(r){ return String(r.fecha).slice(0,10) >= MEDICION_DESDE; });
+  }
+  /** "Abrieron" cuenta sólo las aperturas con el formulario identificado. Las
+   *  que no lo traen eran de la detección automática de Analytics, que contaba
+   *  cualquier formulario del sitio y se apagó el 21-sep-2026. Si la columna
+   *  form_name todavía no llegó del backend, no se filtra nada. */
+  function aperturaPropia(r){
+    if(r.evento !== 'form_start' || r.form_name === undefined) return true;
+    return FORMS_CONOCIDOS.indexOf(r.form_name) >= 0;
+  }
+  /** ¿El período elegido toca días anteriores a MEDICION_DESDE? */
+  function tocaAntes(){ return mes === 'todo' || mes < MEDICION_DESDE.slice(0,7) ||
+    mes === MEDICION_DESDE.slice(0,7); }
+  function todoAntes(){ return mes !== 'todo' && mes < MEDICION_DESDE.slice(0,7); }
+  var FECHA_MEDICION = '31 de agosto de 2026';
+  /* "Abrieron" recién está completo desde el 22-sep-2026: antes, en la página de
+     consultas la apertura no se medía (sí los envíos). Cualquier período que
+     toque días anteriores tiene esa fila incompleta, y se dice en la fila. */
+  var APERTURAS_DESDE = '2026-09-22';
+  var NOTA_APERTURAS = 'incompleto antes del 22-sep';
+  function aperturasIncompletas(){ return mes === 'todo' || mes <= APERTURAS_DESDE.slice(0,7); }
+  function avisoDesde(){
+    return tocaAntes() ? '<div class="note"><strong>Este embudo cuenta desde el ' + FECHA_MEDICION +
+      '.</strong> Es el día desde el que se mide bien la consulta confirmada. Antes de esa fecha ' +
+      'hay aperturas y clics pero casi ninguna consulta registrada, y mezclarlos daría ' +
+      'porcentajes que no significan nada.</div>' : '';
+  }
+
+  /** Los que llegaron por un canal pago. Es el numerador del costo por inscripto. */
+  function inscPagos(m){
+    var o = inscPorCanal(m);
+    return Object.keys(o).reduce(function(s,c){ return esPago(c) ? s+o[c] : s; }, 0);
+  }
+  function invMeta(m){ return metaOk() ? sumar('meta','costo',null,m) : 0; }
+
+  /* Objetivos de Meta que efectivamente mandan gente al sitio. Una campaña de
+     mensajes no puede producir un formulario enviado: meter su inversión en el
+     costo por consulta es dividir plata por un resultado que esa plata nunca
+     buscó, y el número que sale no significa nada. */
+  var OBJ_AL_SITIO = ['OUTCOME_TRAFFIC','LINK_CLICKS','OUTCOME_LEADS',
+                      'LEAD_GENERATION','OUTCOME_SALES','CONVERSIONS'];
+  function alSitio(o){ return OBJ_AL_SITIO.indexOf(String(o||'').toUpperCase()) >= 0; }
+  function invMetaSitio(m){
+    return metaOk() ? sumar('meta','costo', function(r){ return alSitio(r.objetivo); }, m) : 0;
+  }
+
+  function mesAnterior(){
+    if(mes === 'todo') return null;
+    var i = listaMeses.indexOf(mes);
+    return i > 0 ? listaMeses[i-1] : null;
+  }
+
+  /** Fila de comparación. dir: 'normal' (más es mejor), 'inverso' (menos es mejor), 'neutro'. */
+  function delta(actual, previo, dir){
+    if(previo === null || previo === undefined || !previo) return '';
+    var v = (actual - previo) / previo * 100;
+    var cls = 'flat', flecha = '→';
+    if(Math.abs(v) >= 0.05){
+      flecha = v > 0 ? '↑' : '↓';
+      if(dir === 'neutro') cls = 'flat';
+      else if(dir === 'inverso') cls = v > 0 ? 'down' : 'up';
+      else cls = v > 0 ? 'up' : 'down';
+    }
+    return '<span class="'+cls+'"><b>'+flecha+' '+nf1.format(Math.abs(v))+'%</b></span>';
+  }
+  function bloqueDelta(actual, previo, dir){
+    var prev = mesAnterior();
+    if(!prev) return '';
+    var d = delta(actual, previo, dir);
+    if(!d) return '';
+    return '<div class="deltas">'+d+' <span>vs '+etiquetaMes(prev)+'</span></div>';
+  }
+  function etiquetaMes(m){ return MESN[Number(m.slice(5,7))] + '-' + m.slice(2,4); }
+
+  function bloqueOrigen(titulo, consultas, sesiones, total, color){
+    return '<div class="org" style="--org:'+color+'"><span class="t">'+titulo+'</span>' +
+      '<span class="n">'+n(consultas)+'</span>' +
+      '<span class="m">'+(total?Math.round(consultas/total*100):0)+'% de las consultas · ' +
+      n(sesiones)+' sesiones · convierte al ' +
+      (sesiones?nf1.format(consultas/sesiones*100):'0,0')+'%</span></div>';
+  }
+
+  function tarjeta(clase, k, v, d, deltas){
+    return '<div class="kpi'+(clase?' '+clase:'')+'"><span class="k">'+k+'</span>' +
+      '<span class="v">'+v+'</span><span class="d">'+d+'</span>'+(deltas||'')+'</div>';
+  }
+
+  /* ── arranque ── */
+  function arrancar(datos){
+    D = datos;
+    $('cargando').hidden = true; $('app').hidden = false;
+
+    var conDatos = {};
+    (D.dias||[]).forEach(function(r){ conDatos[String(r.fecha).slice(0,7)] = true; });
+    listaMeses = Object.keys(conDatos).sort();
+
+    // Se dibujan los doce meses del año siempre. Los que no tienen datos quedan
+    // apagados, para que se vea el calendario completo y no sólo lo que llegó.
+    var anios = {};
+    listaMeses.forEach(function(m){ anios[m.slice(0,4)] = true; });
+    var listaAnios = Object.keys(anios).sort();
+    if(!listaAnios.length) listaAnios = [String(new Date().getFullYear())];
+
+    var cont = $('meses');
+    cont.insertAdjacentHTML('beforeend',
+      '<button class="mes" data-m="todo" aria-pressed="true" style="min-width:auto">Todo el período</button>');
+    listaAnios.forEach(function(a){
+      cont.insertAdjacentHTML('beforeend', '<span class="anio">'+a+'</span>');
+      for(var i=1;i<=12;i++){
+        var m = a+'-'+('0'+i).slice(-2);
+        cont.insertAdjacentHTML('beforeend',
+          '<button class="mes" data-m="'+m+'"'+(conDatos[m]?'':' disabled')+
+          ' aria-pressed="false">'+MESN[i]+'</button>');
+      }
+    });
+    cont.addEventListener('click', function(e){
+      var b = e.target.closest('button[data-m]'); if(!b || b.disabled) return;
+      this.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed','false'); });
+      b.setAttribute('aria-pressed','true');
+      mes = b.dataset.m; destruir(); render();
+    });
+
+    sello();
+
+    $('tabs').addEventListener('click', function(e){
+      var b = e.target.closest('button[data-p]'); if(!b) return;
+      this.querySelectorAll('button').forEach(function(x){ x.removeAttribute('aria-current'); });
+      b.setAttribute('aria-current','page');
+      document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('on'); });
+      $(b.dataset.p).classList.add('on');
+      graficos(b.dataset.p);
+      window.scrollTo({top:0,behavior:'instant'});
+    });
+
+    if(!(D.dias||[]).length){
+      $('app').insertAdjacentHTML('afterbegin',
+        '<div class="note" style="max-width:none;border-left-color:var(--baja)">' +
+        '<strong>La planilla está vacía.</strong> El tablero está leyendo bien, pero no hay ' +
+        'nada guardado todavía. En el editor de Apps Script elegí <code>actualizar</code> en ' +
+        'el desplegable de arriba y tocá Ejecutar. Cuando termine, recargá esta página — no ' +
+        'hace falta volver a implementar.</div>');
+    }
+
+    render();
+  }
+
+  function sello(){
+    var f = D.fuentes || {};
+    $('chips').innerHTML = chip(f.ga4,'GA4') + chip(f.google_ads,'Google Ads') +
+      chip(f.meta,'Meta') + chip(f.inscriptos,'Inscriptos') +
+      '<span class="stamp" title="El día en curso no se incluye nunca: Analytics y Meta lo tienen ' +
+      'incompleto y mostrarlo haría parecer que hoy cayó todo. Los inscriptos van por mes.">' +
+      hastaCuando() + ' · actualizado ' +
+      new Date(D.generado).toLocaleString('es-AR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) +
+      '</span>';
+  }
+
+  /** "Datos hasta ayer, 20 sep": el último día con datos, sacado de los datos
+   *  mismos y no del reloj — si una corrida falló, dice la verdad. */
+  function hastaCuando(){
+    var f = (D.dias||[]).map(function(r){ return String(r.fecha).slice(0,10); }).sort().pop();
+    if(!f) return 'Sin datos diarios';
+    var d = new Date(f + 'T12:00:00');
+    var ayer = new Date(); ayer.setDate(ayer.getDate()-1);
+    var txt = d.toLocaleDateString('es-AR',{day:'numeric',month:'short'});
+    return (d.toDateString() === ayer.toDateString() ? 'Datos hasta ayer, ' : 'Datos hasta el ') + txt;
+  }
+
+  function chip(o, nombre){
+    var e = (o && o.estado) || 'no_conectado';
+    var cls = e === 'ok' ? 'ok' : (e === 'no_conectado' ? 'off' : 'mal');
+    var t = e === 'ok' ? 'conectado' : (e === 'no_conectado' ? 'sin conectar' : 'con error');
+    return '<span class="chip c-'+cls+'" title="'+nombre+' · '+t+'">' +
+           '<span class="dot '+cls+'"></span>'+nombre+
+           '<span class="estado">· '+t+'</span></span>';
+  }
+
+  function render(){ p1(); p2(); p3(); p4(); p5(); p6();
+    graficos(document.querySelector('.page.on').id); }
+
+  /* ── 1 ── */
+  function p1(){
+    var prev = mesAnterior();
+    var leads = evento('generate_lead'), ses = sumar('dias','sesiones'), inv = sumar('google_ads','costo');
+    var lc = porClave('canales_leads','canal','leads');
+    var pagos = Object.keys(lc).reduce(function(s,c){ return esPago(c) ? s+lc[c] : s; }, 0);
+
+    var invM = invMeta(), invMS = invMetaSitio(), invT = inv + invMS;
+
+    var pLeads = prev ? evento('generate_lead', prev) : null;
+    var pSes   = prev ? sumar('dias','sesiones',null,prev) : null;
+    var pInv   = prev ? sumar('google_ads','costo',null,prev) : null;
+    var pInvM  = prev ? invMeta(prev) : null;
+    var pPagos = null, pCpl = null, pInvT = null, pCpi = null;
+    if(prev){
+      var lcp = porClave('canales_leads','canal','leads',null,prev);
+      pPagos = Object.keys(lcp).reduce(function(s,c){ return esPago(c) ? s+lcp[c] : s; }, 0);
+      pInvT = pInv + invMetaSitio(prev);
+      pCpl = pPagos ? pInvT/pPagos : null;
+      pCpi = inscPagos(prev) ? pInvT/inscPagos(prev) : null;
+    }
+
+    var etq = mes==='todo'
+      ? 'período completo'
+      : MESN[Number(mes.slice(5,7))] + ' ' + mes.slice(0,4);
+
+    var libres = leads - pagos;
+    var pLibres = prev ? (pLeads - pPagos) : null;
+
+    $('k1').innerHTML =
+      tarjeta('hero','Consultas — '+etq, n(leads), 'formulario enviado y confirmado',
+              bloqueDelta(leads, pLeads, 'normal')) +
+      tarjeta('','Sin publicidad', n(libres),
+              leads ? Math.round(libres/leads*100)+'% del total' : '—',
+              bloqueDelta(libres, pLibres, 'normal')) +
+      tarjeta('','De publicidad', n(pagos),
+              leads ? Math.round(pagos/leads*100)+'% del total' : '—',
+              bloqueDelta(pagos, pPagos, 'normal')) +
+      tarjeta('','Inversión Google', money(inv), 'importada desde Analytics',
+              bloqueDelta(inv, pInv, 'neutro')) +
+      tarjeta('','Inversión Meta', metaOk() ? money(invM) : '—',
+              metaOk() ? (invM-invMS > 0
+                ? money(invMS)+' va al sitio · '+money(invM-invMS)+' a mensajes'
+                : 'sólo campañas UCINE de la cuenta') : 'sin conectar',
+              metaOk() ? bloqueDelta(invM, pInvM, 'neutro') : '') +
+      tarjeta('','Costo por consulta', pagos ? money(invT/pagos) : '—',
+              metaOk() ? 'sólo la inversión que lleva al sitio' : 'sólo consultas pagas',
+              bloqueDelta(pagos?invT/pagos:0, pCpl, 'inverso')) +
+      tarjeta('','Sesiones', n(ses), ses ? 'convierten al '+pc(leads/ses*100) : '—',
+              bloqueDelta(ses, pSes, 'normal')) +
+      (inscOk() ? tarjeta('','Inscriptos', n(inscriptos()),
+              'fuente de datos: hoja de cálculo',
+              bloqueDelta(inscriptos(), prev?inscriptos(prev):null, 'normal')) : '') +
+      // El costo por inscripto es la pregunta que de verdad importa, y por eso
+      // mismo es la que más fácil se responde mal: el inscripto de este mes no
+      // salió de la plata de este mes. Se muestra igual, pero el subtítulo dice
+      // qué es en realidad — un cociente del período, no un costo de adquisición.
+      (inscOk() ? tarjeta('','Costo por inscripto',
+              inscPagos() ? money(invT/inscPagos()) : '—',
+              inscPagos() ? 'inversión del '+(mes==='todo'?'período':'mes')+' ÷ inscriptos de canales pagos'
+                          : 'ningún inscripto del período vino de un canal pago',
+              bloqueDelta(inscPagos()?invT/inscPagos():0, pCpi, 'inverso')) : '');
+
+    /* Qué entra y qué no en el costo por consulta. Va escrito siempre, aunque
+       no haya nada excluido: el día que alguien prenda una campaña de mensajes,
+       el número cambia solo y este renglón es lo único que lo explica. */
+    var fuera = invM - invMS;
+    $('p1-nota').innerHTML = !metaOk() ? '' :
+      '<div class="card"><div class="note"><strong>Qué inversión entra en el costo por ' +
+      'consulta.</strong> Entra la que lleva gente al sitio: todo Google Ads (' + money(inv) +
+      ') y, de Meta, sólo las campañas de tráfico y clientes potenciales (' + money(invMS) + ').' +
+      (fuera > 0
+        ? ' Quedan afuera ' + money(fuera) + ' de campañas de mensajes: no mandan a nadie al ' +
+          'formulario, así que dividir esa plata por las consultas del sitio daría un costo ' +
+          'inventado. Ese dinero se mide por su propio resultado — las conversaciones de ' +
+          'WhatsApp, en la página de medios pagos.'
+        : ' Hoy todas las campañas de Meta activas llevan al sitio, así que no quedó nada afuera.') +
+      '</div></div>';
+
+    p1embudo();
+    p1inscriptos();
+
+    var sc = porClave('canales_sesiones','canal','sesiones');
+
+    var sesPago = 0, sesLibre = 0;
+    Object.keys(sc).forEach(function(c){ if(esPago(c)) sesPago += sc[c]; else sesLibre += sc[c]; });
+    $('origen').innerHTML =
+      bloqueOrigen('Sin publicidad', libres, sesLibre, leads, 'var(--s-a)') +
+      bloqueOrigen('De publicidad', pagos, sesPago, leads, 'var(--s-c)');
+
+    var canales = Object.keys(sc).sort(function(a,b){ return (lc[b]||0)-(lc[a]||0) || sc[b]-sc[a]; });
+    // Los inscriptos se suman a la tabla de canales cuando hay hoja conectada.
+    // Un canal puede tener inscriptos y ninguna sesión en el mes: la consulta
+    // fue antes. Esa fila entra igual — esconderla sería perder un inscripto.
+    var ic = inscPorCanal(), hayIns = inscOk() && Object.keys(ic).length > 0;
+    var clavesCanal = canales.slice();
+    if(hayIns) Object.keys(ic).forEach(function(c){
+      if(clavesCanal.indexOf(c) < 0) clavesCanal.push(c); });
+
+    $('t-canal-cab').innerHTML = '<tr><th>Canal</th><th>Sesiones</th><th>Consultas</th>' +
+      (hayIns ? '<th>Inscriptos</th>' : '') + '<th>Conversión</th></tr>';
+    $('t-canal').innerHTML = clavesCanal.map(function(c){
+      var s = sc[c]||0, l = lc[c]||0;
+      return '<tr><td>'+c+(esPago(c)?' <span class="sub">pago</span>':'')+'</td><td>'+n(s)+
+        '</td><td>'+n(l)+'</td>' +
+        (hayIns ? '<td>'+n(ic[c]||0)+'</td>' : '') +
+        '<td>'+(s?pc(l/s*100):'—')+'</td></tr>';
+    }).join('');
+    var totIns = Object.keys(ic).reduce(function(s,c){ return s+ic[c]; }, 0);
+    $('t-canal-tot').innerHTML = '<tr><td>Total</td><td>'+n(ses)+'</td><td>'+n(leads)+'</td>' +
+      (hayIns ? '<td>'+n(totIns)+'</td>' : '') +
+      '<td>'+(ses?pc(leads/ses*100):'—')+'</td></tr>';
+  }
+
+  /* ══ El embudo madre ═══════════════════════════════════════════════════
+   * Cuatro pasos, cada uno partido por canal. Las barras van al 100% del ancho
+   * a propósito: la escala real no sirve — de 90.000 sesiones a 200 consultas,
+   * el último paso sería una raya invisible. Lo que importa acá es cómo cambia
+   * la MEZCLA entre un paso y el siguiente: el canal que se agranda a medida
+   * que se baja es el que convierte mejor, y eso se ve de un vistazo.
+   * El número absoluto y el % que sigue van al lado, en texto.
+   */
+  var COLOR_EMBUDO = { 'Organic Search':'--c1', 'Direct':'--c2', 'Organic Social':'--c3',
+                       'Referral':'--c4', 'Paid Search':'--c5', 'Paid Social':'--s-c' };
+  var GRIS_OTROS = '#9AA3B0';
+  /* Tinta del número dentro de cada segmento. No es capricho: sobre el amarillo
+     y el rosa, el blanco no se lee. */
+  var TINTA_EMBUDO = { 'Organic Search':'#fff', 'Direct':'#fff', 'Organic Social':'#05291c',
+                       'Referral':'#fff', 'Paid Search':'#2b1d00', 'Paid Social':'#40101f',
+                       'Otros':'#1e232b' };
+
+  /**
+   * Las sesiones de la tarjeta y las del embudo salen de dos informes distintos
+   * de Analytics: uno pide sesiones por día, el otro por día y canal. Cuando GA4
+   * abre una métrica por una dimensión, el total no siempre coincide — hay
+   * umbrales y redondeos que se aplican en el desglose.
+   * Una diferencia chica es normal. Una que crece es una señal, y sin este aviso
+   * nadie se entera hasta que un cliente pregunta por qué hay dos números.
+   */
+  function avisoSesiones(tEmbudo){
+    var tTarjeta = sumar('dias','sesiones');
+    if(!tTarjeta || !tEmbudo) return '';
+    var dif = Math.abs(tEmbudo - tTarjeta) / tTarjeta * 100;
+    if(dif < 1) return '';
+    return '<div class="note"><strong>Las sesiones acá y en la tarjeta de arriba no dan igual: ' +
+      n(tEmbudo) + ' contra ' + n(tTarjeta) + ' (' + nf1.format(dif) + '% de diferencia).</strong> ' +
+      'Es esperable: son dos informes distintos de Analytics, y abrir las sesiones por canal ' +
+      'aplica umbrales que el informe sin abrir no tiene. Mientras la diferencia sea de uno o ' +
+      'dos puntos, no hay nada que arreglar. Si un día salta a diez, eso sí es un problema.</div>';
+  }
+
+  /**
+   * Con qué UTM llegó la consulta que terminó en inscripción.
+   * Es lo único que conecta un inscripto con un canal, porque Analytics no puede
+   * ver una inscripción: pasa meses después, fuera del sitio y muchas veces en
+   * otro dispositivo. El dato sale del UTM que el backend del formulario recibe
+   * al momento de la consulta — es medido, no recordado, pero es de un momento
+   * distinto al de la sesión que cuenta Analytics, así que vive acá, aparte.
+   */
+  function p1inscriptos(){
+    var caja = $('p1-insc');
+    if(!inscOk()){ caja.innerHTML = ''; return; }
+    var filas = filtrar('inscriptos');
+    if(!filas.length){
+      caja.innerHTML = vacio('Sin inscriptos cargados en este período',
+        'La conexión con la planilla funciona, pero no hay filas para estas fechas.');
+      return;
+    }
+    var porCanal = {}, equiv = {}, total = 0;
+    filas.forEach(function(r){
+      var k = r.canal || 'Sin cargar', v = Number(r.cantidad)||0;
+      porCanal[k] = (porCanal[k]||0) + v; total += v;
+      if(r.equivale) equiv[k] = r.equivale;
+    });
+    // "Sin dato" y "No contestó" van siempre al final: no compiten por el podio,
+    // y una celda vacía no es un canal.
+    var alFondo = function(c){
+      return c === 'Sin cargar' || c === 'Sin dato' || c === 'No lo sabemos'; };
+    var orden = Object.keys(porCanal).sort(function(a,b){
+      if(alFondo(a) !== alFondo(b)) return alFondo(a) ? 1 : -1;
+      return porCanal[b]-porCanal[a];
+    });
+    var max = Math.max.apply(null, orden.filter(function(c){ return !alFondo(c); })
+      .map(function(c){ return porCanal[c]; }).concat([1]));
+
+    // Sin respuesta son tres cosas: nadie lo cargó, no se preguntó, o preguntamos
+    // y no contestaron. Para leer la tabla dan lo mismo — ninguna dice de dónde
+    // vino — pero sólo la primera es un problema de proceso.
+    var vacios = (porCanal['Sin cargar']||0) + (porCanal['Sin dato']||0) +
+                 (porCanal['No lo sabemos']||0);
+    var pcVacios = total ? vacios/total*100 : 0;
+
+    caja.innerHTML =
+      '<div class="card"><header><div><h2>Con qué origen llegaron los inscriptos</h2>' +
+      '<p class="hint">El UTM con el que entró la consulta que terminó en inscripción, según ' +
+      'lo que ve el backend del formulario.</p></div>' +
+      '<span class="pill">'+n(total)+' inscriptos</span></header>' +
+      (vacios ? '<div class="note"><strong>De '+n(total)+' inscriptos, '+n(vacios)+
+        ' ('+pc(pcVacios)+') no tienen origen identificado.</strong> ' +
+        (pcVacios > 20
+          ? 'Con esa proporción, los porcentajes de abajo no describen al conjunto: describen ' +
+            'a los que sí se pudieron identificar, que pueden no parecerse en nada al resto.'
+          : 'Es poco y no cambia la lectura.') +
+        ' <em>No lo sabemos</em> es que la consulta llegó sin UTM reconocible. ' +
+        '<em>Sin cargar</em> es una celda vacía en la planilla, y es lo único que hay que ' +
+        'corregir a mano.</div>' : '') +
+      '<div class="tw"><table><thead><tr><th>Origen de la consulta</th>' +
+      '<th>Equivale en el tablero a</th><th>Inscriptos</th>' +
+      '<th>Participación</th></tr></thead><tbody>' +
+      orden.map(function(c){
+        return '<tr><td>'+c+'</td>'+
+          '<td class="sub" style="text-align:left">'+(equiv[c]||'—')+'</td>'+
+          '<td>'+n(porCanal[c])+'</td><td>'+
+          pc(porCanal[c]/total*100)+'<div class="bartrack"><span class="bar" style="width:'+
+          (porCanal[c]/max*100).toFixed(1)+'%"></span></div></td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<div class="note"><strong>Esto no se compara uno a uno con el embudo de arriba, y no ' +
+      'porque uno esté mal.</strong> Acá cada inscripto trae el UTM de la consulta que lo ' +
+      'originó, que pudo ser en mayo; el embudo cuenta las sesiones del período elegido. Son ' +
+      'dos momentos distintos del mismo recorrido. Lo que sí sirve es leerlos juntos: si un ' +
+      'canal pesa mucho acá y poco arriba, está trayendo gente que se inscribe — que es lo que ' +
+      'importa — aunque no aparezca en el volumen del mes.</div></div>';
+  }
+
+  function p1embudo(){
+    if(todoAntes()){
+      $('p1-embudo').innerHTML = vacio('El embudo empieza el ' + FECHA_MEDICION,
+        'En este mes todavía no se medía la consulta confirmada, así que no hay embudo que ' +
+        'armar. Los números sueltos de arriba sí valen.');
+      return;
+    }
+    var ses = {};
+    desdeMedicion(filtrar('canales_sesiones')).forEach(function(r){
+      ses[r.canal] = (ses[r.canal]||0) + (Number(r.sesiones)||0); });
+    var ce  = desdeMedicion(filtrar('canales_embudo')).filter(aperturaPropia);
+    if(!ce.length || !Object.keys(ses).length){
+      $('p1-embudo').innerHTML = ''; return;
+    }
+
+    var paso = { form_start:{}, SENDINFO:{}, generate_lead:{} };
+    ce.forEach(function(r){
+      if(!paso[r.evento]) return;
+      paso[r.evento][r.canal] = (paso[r.evento][r.canal]||0) + (Number(r.n)||0);
+    });
+
+    var canales = Object.keys(ses).sort(function(a,b){
+      return (paso.generate_lead[b]||0)-(paso.generate_lead[a]||0) || ses[b]-ses[a]; });
+    var propios = canales.filter(function(c){ return COLOR_EMBUDO[c]; });
+    var otros   = canales.filter(function(c){ return !COLOR_EMBUDO[c]; });
+    // El orden de los colores es fijo, no por ranking: si un mes cae un canal,
+    // los demás no cambian de color. "Otros" siempre último y en gris.
+    var orden = Object.keys(COLOR_EMBUDO).filter(function(c){ return propios.indexOf(c) >= 0; });
+
+    // Los inscriptos entran al embudo por la columna "equivale" de la hoja de
+    // Google: ahí cada origen cargado ya está traducido al canal que mide
+    // Analytics, y es lo único que permite ponerlos en la misma fila que los
+    // demás pasos. Lo que no traduce a un canal conocido va a "Otros", no se
+    // tira: un inscripto sin origen sigue siendo un inscripto.
+    var ins = null, insTot = 0;
+    if(inscOk()){
+      var fi = filtrar('inscriptos');
+      if(fi.length){
+        ins = {};
+        fi.forEach(function(r){
+          var v = Number(r.cantidad)||0;
+          var k = COLOR_EMBUDO[r.equivale] ? r.equivale : 'Otros';
+          ins[k] = (ins[k]||0) + v;
+          insTot += v;
+        });
+      }
+    }
+
+    var pasos = [
+      { nom:'Entraron al sitio',        dato:ses,                 pie:'sesiones' },
+      { nom:'Abrieron el formulario',   dato:paso.form_start,     pie:'form_start' },
+      { nom:'Apretaron enviar',         dato:paso.SENDINFO,       pie:'SENDINFO' },
+      { nom:'Dejaron la consulta',      dato:paso.generate_lead,  pie:'generate_lead' }
+    ];
+    // El paso de inscriptos sólo aparece si hay algo cargado para el período.
+    // Un cero dibujado como paso final haría ver el embudo como si nadie se
+    // hubiera inscripto, cuando lo que pasa es que todavía no se cargó.
+    if(ins){
+      pasos.push({ nom:'Se inscribieron', dato:ins, pie:'hoja de cálculo',
+                   cohorte:true });
+    }
+    var tot = function(o){ return Object.keys(o).reduce(function(s,k){ return s+(o[k]||0); },0); };
+
+    var filas = pasos.map(function(p,i){
+      var t = tot(p.dato);
+      var ant = i ? tot(pasos[i-1].dato) : null;
+      // "Otros" junta dos cosas: los canales que no tienen color propio y, en el
+      // paso de inscriptos, los orígenes que no se pudieron traducir a un canal.
+      var vOtros = otros.reduce(function(s,c){ return s+(p.dato[c]||0); },0) +
+                   (p.dato['Otros']||0);
+      var seg = orden.map(function(c){
+          return { nom:c, v:p.dato[c]||0, color:'var('+COLOR_EMBUDO[c]+')' }; })
+        .concat(vOtros > 0 ? [{ nom:'Otros', color:GRIS_OTROS, v:vOtros }] : [])
+        .filter(function(s){ return s.v > 0; });
+
+      // La forma de embudo no la da la escala, la da la caja: el primer paso
+      // ocupa todo el ancho y el último el 40%, repartido parejo entre medio.
+      // Se calcula sobre pasos.length y no con un número fijo por escalón, así
+      // el embudo sigue cerrando igual si algún día se agrega o se saca un paso.
+      var ancho = pasos.length > 1 ? 100 - i * (60 / (pasos.length - 1)) : 100;
+      // El último paso no lleva "% del paso anterior" como los otros: los
+      // inscriptos del mes vienen de consultas que pudieron ser de mayo, así que
+      // ese cociente no es una tasa de conversión sino dos cosas distintas
+      // divididas. Se dice qué es, y el porqué queda en la nota de abajo.
+      var derecha = !ant ? 'punto de partida'
+        : p.cohorte ? pc(t/ant*100) + ' de las consultas del período — ver nota'
+        : t > ant ? 'más que el paso anterior, que está contado de menos'
+        : pc(t/ant*100) + ' del paso anterior' +
+          (p.pie === 'form_start' && aperturasIncompletas() ? ' · ' + NOTA_APERTURAS : '');
+      return '<div class="epaso">' +
+        '<div class="ecab"><span class="enom">'+p.nom+'</span>' +
+          '<span class="eval">'+n(t)+'</span>' +
+          '<span class="esig">'+derecha+'</span>' +
+        '</div>' +
+        '<div class="epista" style="width:'+ancho.toFixed(2)+'%">' +
+          seg.map(function(s){
+            var q = t ? s.v/t*100 : 0;
+            // El número va adentro sólo si entra. Un "12,4%" apretado en dos
+            // píxeles no se lee y ensucia; para esos está el globo al pasar.
+            var etq = q >= 7 ? nf1.format(q)+'%' : (q >= 3.5 ? Math.round(q)+'%' : '');
+            // Una banda de un solo canal con "100,0%" adentro no dice nada: el
+            // 100% ya se entiende al ver que no hay nada más. Lo que falta ahí
+            // es de qué canal se trata, así que va el nombre en vez del número.
+            if(seg.length === 1) etq = s.nom;
+            // Cuando el segmento es ancho de verdad entra el nombre además del
+            // porcentaje, y se ahorra ir a buscarlo a la referencia de arriba.
+            // Se mide contra el ancho real en pantalla, no contra el porcentaje
+            // dentro del paso: un 30% de una banda al 40% es angosto, y ahí el
+            // nombre se cortaría por la mitad.
+            else if(q * ancho / 100 >= 15) etq = s.nom + ' · ' + nf1.format(q) + '%';
+            return '<span class="eseg" style="width:'+q.toFixed(2)+'%;background:'+s.color+
+              ';color:'+(TINTA_EMBUDO[s.nom]||'#fff')+'" title="'+s.nom+': '+n(s.v)+
+              ' · '+nf1.format(q)+'% del paso">'+etq+'</span>';
+          }).join('') +
+        '</div></div>';
+    }).join('');
+
+    var leyenda = orden.map(function(c){
+        return '<span><i class="swatch" style="background:var('+COLOR_EMBUDO[c]+')"></i>'+c+'</span>'; })
+      .concat(otros.length ? ['<span><i class="swatch" style="background:'+GRIS_OTROS+'"></i>Otros</span>'] : [])
+      .join('');
+
+    // La tabla contesta la pregunta que la forma sólo insinúa: cuál convierte mejor.
+    var tSes = tot(ses), tFs = tot(paso.form_start),
+        tSi = tot(paso.SENDINFO), tGl = tot(paso.generate_lead);
+    var tIns = ins ? insTot : 0;
+    // Un canal puede tener inscriptos y ninguna sesión en el mes elegido — es
+    // justamente el caso normal, porque la consulta fue antes. Esas filas entran
+    // igual: sacarlas escondería inscriptos reales.
+    var clavesTabla = canales.slice();
+    if(ins) Object.keys(ins).forEach(function(c){
+      if(c !== 'Otros' && clavesTabla.indexOf(c) < 0) clavesTabla.push(c); });
+
+    var tabla = clavesTabla.map(function(c){
+      var s = ses[c]||0, l = paso.generate_lead[c]||0, ic = ins ? (ins[c]||0) : 0;
+      return { c:c, s:s, f:paso.form_start[c]||0, e:paso.SENDINFO[c]||0, l:l, i:ic,
+               r:s ? l/s*100 : 0 };
+    }).filter(function(r){ return r.s > 0 || r.i > 0; })
+      .sort(function(a,b){ return b.r-a.r || b.l-a.l; });
+    var mejorR = tabla.length ? tabla[0].r : 0;
+    /** Número y, debajo, cuánto pesa dentro de ese paso. */
+    var celda = function(v, t){
+      return '<td>'+n(v)+'<div class="sub">'+(t?nf1.format(v/t*100)+'%':'—')+'</div></td>';
+    };
+
+    $('p1-embudo').innerHTML =
+      '<div class="card"><header><div><h2>De la visita a la inscripción</h2>' +
+      '<p class="hint"><strong>Entraron</strong> son sesiones de Analytics: visitas, no personas ' +
+      '— quien entra el lunes y el viernes cuenta dos veces. Cada paso está partido por canal, ' +
+      'y las barras no están a escala entre sí: el ancho sirve para comparar la mezcla, no el ' +
+      'volumen. El canal que se agranda al bajar es el que mejor convierte. Qué cuenta cada ' +
+      'paso, explicado sin tecnicismos: al pie de <em>Embudo del formulario</em>.' +
+      (ins ? ' Los cuatro primeros pasos los mide Analytics; los inscriptos salen de la hoja ' +
+             'de Google.' : '')+'</p></div>' +
+      '<div class="legend">'+leyenda+'</div></header>' +
+      avisoDesde() +
+      '<div class="embudom">'+filas+'</div>' +
+      '<div class="tw" style="margin-top:18px"><table><thead><tr><th>Canal</th>' +
+      '<th>Entraron</th><th>Abrieron</th><th>Apretaron enviar</th><th>Consultas</th>' +
+      (ins ? '<th>Inscriptos</th>' : '') +
+      '<th>Entraron → consulta</th></tr></thead><tbody>' +
+      tabla.map(function(r){
+        return '<tr><td>'+r.c+(esPago(r.c)?' <span class="sub">pago</span>':'')+'</td>' +
+          celda(r.s,tSes) + celda(r.f,tFs) + celda(r.e,tSi) + celda(r.l,tGl) +
+          (ins ? celda(r.i,tIns) : '') +
+          '<td>'+pc(r.r)+'<div class="bartrack"><span class="bar" style="width:'+
+          (mejorR?Math.min(r.r/mejorR*100,100):0).toFixed(1)+'%"></span></div></td></tr>';
+      }).join('') + '</tbody>' +
+      '<tfoot><tr><td>Total</td><td>'+n(tSes)+'</td><td>'+n(tFs)+'</td><td>'+n(tSi)+
+      '</td><td>'+n(tGl)+'</td>' + (ins ? '<td>'+n(tIns)+'</td>' : '') +
+      '<td>'+(tSes?pc(tGl/tSes*100):'—')+'</td></tr></tfoot>' +
+      '</table></div>' +
+      avisoSesiones(tSes) +
+      '<div class="note">Debajo de cada número está cuánto pesa ese canal <em>dentro de ese ' +
+      'paso</em> — los porcentajes de una columna suman 100. Si un canal pesa 20% al entrar ' +
+      'y 35% al consultar, está rindiendo por encima de su tamaño. La tabla está ordenada por ' +
+      'conversión, no por volumen: un canal chico arriba de todo es una pista de dónde poner ' +
+      'más plata.</div>' +
+      (ins ? '<div class="note"><strong>El último paso no se divide por el anterior.</strong> ' +
+        'Los inscriptos de un mes vienen de consultas que pudieron entrar en mayo: el embudo ' +
+        'cuenta las sesiones del período elegido y la inscripción llega meses después. ' +
+        'Dividir una cosa por la otra da un número que parece una tasa de conversión y no lo ' +
+        'es. La conversión consulta → inscripto recién se puede leer sobre un ciclo cerrado: ' +
+        'todas las consultas del ciclo contra todos los inscriptos de ese ciclo. ' +
+        'Lo que sí sirve mes a mes es la <em>mezcla</em>: qué canales aparecen en la banda de ' +
+        'abajo y con qué peso. Un canal que pesa poco arriba y mucho abajo trae menos gente ' +
+        'pero de la que se inscribe.</div>' : '') +
+      '</div>';
+  }
+
+  /* ── 2 ── */
+  function p2(){
+    var filas = filtrar('carreras');
+    if(!filas.length){ $('p2-cuerpo').innerHTML = vacio('Sin datos de carrera',
+      'El informe no devolvió filas. Suele ser porque el parámetro <code>carrera</code> todavía ' +
+      'no llega en los tres eventos del embudo, o porque la dimensión personalizada no está ' +
+      'declarada en Analytics.'); return; }
+    var m = {};
+    filas.forEach(function(r){
+      var k = (r.carrera||'(sin identificar)')+'|'+(r.nivel||'');
+      m[k] = m[k] || { carrera:r.carrera||'(sin identificar)', nivel:r.nivel||'', select:0, form:0, lead:0 };
+      if(r.evento==='select_carrera') m[k].select += Number(r.n)||0;
+      if(r.evento==='form_start')     m[k].form   += Number(r.n)||0;
+      if(r.evento==='generate_lead')  m[k].lead   += Number(r.n)||0;
+    });
+    // Vistas de la página de cada carrera, unidas por el nombre normalizado.
+    // El match es por texto porque no hay ningún ID compartido entre la ruta
+    // de la página y el parámetro carrera: se elige el nombre más largo que
+    // encaje, para que "Dirección" no se quede con las visitas de
+    // "Dirección de fotografía".
+    var vistas = vistasPorCarrera(lista_nombres(m));
+
+    var lista = Object.keys(m).map(function(k){ return m[k]; })
+      .sort(function(a,b){ return b.lead-a.lead || b.select-a.select; });
+    lista.forEach(function(c){ c.vistas = vistas.porCarrera[clave(c.carrera)] || 0; });
+    var max = lista.reduce(function(x,c){ return Math.max(x, c.vistas || c.select); }, 1);
+    var hayVistas = lista.some(function(c){ return c.vistas > 0; });
+
+    // Inscriptos por carrera, unidos por el nombre normalizado.
+    var hayInsc = false;
+    if(inscOk()){
+      // "Compaginación Cinematográfica" en la planilla y "Compaginación" en
+      // Analytics son la misma carrera. Se emparejan por contención, tomando
+      // primero el nombre más largo, para que "Dirección" no se quede con los
+      // inscriptos de "Dirección de Arte".
+      var insc = {}, sueltos = {};
+      var nomGa4 = lista.map(function(c){ return c.carrera; })
+        .sort(function(a,b){ return clave(b).length - clave(a).length; });
+      filtrar('inscriptos').forEach(function(r){
+        var k = clave(r.carrera), v = Number(r.cantidad)||0, quien = null;
+        for(var i=0;i<nomGa4.length;i++){
+          var g = clave(nomGa4[i]);
+          if(g && k && (k.indexOf(g) >= 0 || g.indexOf(k) >= 0)){ quien = nomGa4[i]; break; }
+        }
+        if(quien) insc[clave(quien)] = (insc[clave(quien)]||0) + v;
+        else {
+          // Una carrera con inscriptos y sin consultas medidas no se descarta:
+          // entra a la tabla con guiones. Desaparecer sería peor que no cerrar.
+          sueltos[r.carrera] = sueltos[r.carrera] ||
+            { carrera:r.carrera, nivel:r.nivel||'', select:0, form:0, lead:0, insc:0, sinDatos:true };
+          sueltos[r.carrera].insc += v;
+        }
+      });
+      lista.forEach(function(c){ c.insc = insc[clave(c.carrera)] || 0; });
+      Object.keys(sueltos).forEach(function(k){ lista.push(sueltos[k]); });
+      hayInsc = lista.some(function(c){ return c.insc > 0; });
+    }
+
+    $('p2-cuerpo').innerHTML = '<div class="card"><header><div><h2>Embudo por carrera</h2>' +
+      '<p class="hint">Cuatro pasos: cuánta gente miró la página de la carrera, cuántas ' +
+      'hicieron clic en <strong>+ INFO</strong>, cuántas llegaron a ver el formulario abierto ' +
+      'y cuántas lo enviaron.</p></div></header>' +
+      '<div class="tw"><table><thead><tr><th>Carrera</th><th>Nivel</th>' +
+      (hayVistas?'<th>Vistas de la página</th>':'') +
+      '<th>Clics en + INFO</th><th>Abrieron</th><th>Consultas</th>' +
+      (hayInsc?'<th>Inscriptos</th>':'') +
+      '<th>Clic → consulta</th></tr></thead><tbody>' +
+      lista.map(function(c){
+        var ref = c.vistas || c.select, d = c.sinDatos;
+        return '<tr><td>'+c.carrera+(d?' <span class="sub">sin consultas medidas</span>':'')+'</td>'+
+          '<td class="sub" style="text-align:right">'+c.nivel+'</td>'+
+          (hayVistas?'<td>'+(c.vistas?n(c.vistas):'—')+'</td>':'') +
+          '<td>'+(d?'—':n(c.select))+'</td><td>'+(d?'—':n(c.form))+'</td>'+
+          '<td>'+(d?'—':n(c.lead))+'</td>'+
+          (hayInsc?'<td>'+(c.insc?n(c.insc):'—')+'</td>':'') +
+          '<td>'+
+          (c.select?pc(c.lead/c.select*100):'—')+'<div class="bartrack"><span class="bar" style="width:'+
+          (ref/max*100).toFixed(1)+'%"></span></div></td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<p class="hint">La barra es el volumen; el porcentaje, cuántos de los que hicieron clic ' +
+      'terminan en consulta. Una carrera con barra larga y porcentaje bajo trae curiosidad, ' +
+      'no interés.</p>' +
+      '<div class="note"><strong>Las consultas de esta página incluyen los dos formularios.</strong> ' +
+      'El valor sale del parámetro <code>carrera</code> del evento de consulta, venga del popup ' +
+      'de la carrera o de la página de consultas. El desglose por formulario está en la página 3.</div>' +
+      (hayInsc ? '<div class="note"><strong>Los inscriptos no se dividen por las consultas de ' +
+        'esta tabla, y no es una omisión.</strong> Quien consulta en septiembre se inscribe en ' +
+        'febrero: son dos momentos distintos, y dividir uno por otro dentro del mismo mes da un ' +
+        'porcentaje que no describe nada. La tasa de consulta a inscripto se puede calcular ' +
+        'recién sobre un ciclo cerrado — las consultas de todo el ciclo contra los inscriptos ' +
+        'que dejó ese ciclo.</div>' : '') +
+      '</div>';
+
+    $('p2-paginas').innerHTML = vistas.sueltas.length
+      ? '<div class="card"><header><div><h2>Páginas de carrera que no pude emparejar</h2>' +
+        '<p class="hint">Están medidas, pero su dirección no coincide con ninguno de los nombres ' +
+        'que llegan en el parámetro <code>carrera</code>. Si alguna debería estar en la tabla de ' +
+        'arriba, hay que alinear el nombre.</p></div></header>' +
+        '<div class="tw"><table><thead><tr><th>Dirección</th><th>Vistas</th></tr></thead><tbody>' +
+        vistas.sueltas.map(function(p){
+          return '<tr><td class="sub" style="text-align:left"><code>'+p.ruta+'</code></td><td>'+n(p.vistas)+'</td></tr>';
+        }).join('') + '</tbody></table></div></div>'
+      : '';
+  }
+
+  function lista_nombres(m){
+    return Object.keys(m).map(function(k){ return m[k].carrera; })
+      .filter(function(c){ return c && c !== '(sin identificar)'; });
+  }
+  /** Sin acentos, sin mayúsculas, sin separadores: para comparar un nombre
+   *  de carrera contra un pedazo de URL. */
+  function clave(s){
+    return String(s||'').toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g,'')
+      .replace(/[^a-z0-9]+/g,'');
+  }
+  function vistasPorCarrera(nombres){
+    var porCarrera = {}, sueltas = [], agr = {};
+    filtrar('paginas_carrera').forEach(function(r){
+      agr[r.ruta] = (agr[r.ruta]||0) + (Number(r.vistas)||0);
+    });
+    // El nombre más largo primero: gana el match más específico.
+    var orden = nombres.slice().sort(function(a,b){ return clave(b).length - clave(a).length; });
+    Object.keys(agr).forEach(function(ruta){
+      var k = clave(ruta), quien = null;
+      for(var i=0;i<orden.length;i++){ if(k.indexOf(clave(orden[i])) >= 0){ quien = orden[i]; break; } }
+      if(quien) porCarrera[clave(quien)] = (porCarrera[clave(quien)]||0) + agr[ruta];
+      else if(agr[ruta] > 0) sueltas.push({ ruta:ruta, vistas:agr[ruta] });
+    });
+    sueltas.sort(function(a,b){ return b.vistas-a.vistas; });
+    return { porCarrera:porCarrera, sueltas:sueltas.slice(0,15) };
+  }
+
+  /* ── 3 ── */
+  function p3(){
+    if(todoAntes()){
+      var aviso = vacio('El embudo empieza el ' + FECHA_MEDICION,
+        'En este mes todavía no se medía la consulta confirmada, así que no hay embudo que armar.');
+      $('k3').innerHTML = ''; $('f-total').innerHTML = aviso; $('f-total-nota').innerHTML = '';
+      $('p3-origen').innerHTML = ''; $('p3-form').innerHTML = '';
+      return;
+    }
+    var prev = mesAnterior();
+    // Aperturas: sólo las del formulario identificado (ver aperturaPropia).
+    // Envíos y consultas: todos. Y todo desde MEDICION_DESDE.
+    var abiertas = function(m){
+      return desdeMedicion(filtrar('formularios', m)).reduce(function(t,r){
+        return (r.evento==='form_start' && FORMS_CONOCIDOS.indexOf(r.form_name)>=0)
+          ? t + (Number(r.n)||0) : t; }, 0); };
+    var ev = function(nombre, m){
+      return desdeMedicion(filtrar('eventos', m)).reduce(function(t,r){
+        return r.evento===nombre ? t + (Number(r.n)||0) : t; }, 0); };
+    var fs = abiertas(), si = ev('SENDINFO'), gl = ev('generate_lead');
+    var pFs = prev?abiertas(prev):null, pGl = prev?ev('generate_lead',prev):null;
+
+    $('k3').innerHTML =
+      // Si hay más consultas que aperturas medidas, el cociente no dice nada:
+      // faltan aperturas por contar (la página de consultas antes del 22-sep).
+      tarjeta('hero','Abren y no terminan', (fs && gl<=fs)?nf1.format((1-gl/fs)*100)+'%':'—',
+              (fs && gl<=fs) ? n(fs-gl)+' empezaron a escribirnos y se fueron'
+                             : 'hay más consultas que aperturas medidas en este período',
+              (prev&&pFs&&gl<=fs&&pGl<=pFs)?bloqueDelta((1-gl/fs)*100,(1-pGl/pFs)*100,'inverso'):'') +
+      tarjeta('','Abrieron', n(fs), 'con el formulario identificado', bloqueDelta(fs,pFs,'normal')) +
+      tarjeta('','Apretaron enviar', n(si), fs?pc(si/fs*100)+' de los que abrieron':'—',
+              bloqueDelta(si, prev?ev('SENDINFO',prev):null,'normal')) +
+      tarjeta('','Consultas', n(gl), si?pc(gl/si*100)+' de los que enviaron':'—',
+              bloqueDelta(gl,pGl,'normal')) +
+      (inscOk() ? tarjeta('','Inscriptos', n(inscriptos()),
+              'fuente de datos: hoja de cálculo',
+              bloqueDelta(inscriptos(), prev?inscriptos(prev):null, 'normal')) : '');
+
+    // El paso de inscriptos se agrega al final del embudo del formulario cuando
+    // hay hoja conectada. No comparte origen con los tres de arriba — esos los
+    // mide Analytics en el momento, éste se carga a mano y llega meses después —
+    // pero verlo al pie es lo que convierte un embudo de formulario en un embudo
+    // de captación. La nota de abajo aclara qué es cada cosa.
+    var marcaAp = aperturasIncompletas() ? 'incompleto' : undefined;
+    var pasosT = [['Abrieron',fs,marcaAp],['Apretaron enviar',si],['Consulta confirmada',gl]];
+    if(inscOk() && inscriptos() > 0) pasosT.push(['Se inscribieron', inscriptos(), 'otra-fuente']);
+    embudo('f-total', pasosT);
+    $('f-total-nota').innerHTML = avisoDesde() + ((inscOk() && inscriptos() > 0)
+      ? '<div class="note"><strong>Los tres primeros pasos y el último no se miden igual.</strong> ' +
+        'Abrieron, apretaron enviar y consulta confirmada son eventos de Analytics del período ' +
+        'elegido. Los inscriptos salen de la hoja de cálculo y corresponden a consultas que ' +
+        'pudieron entrar meses antes. Por eso el porcentaje del último escalón no es una tasa ' +
+        'de conversión: es la relación entre dos cosas de momentos distintos. Se lee de verdad ' +
+        'sobre un ciclo cerrado.</div>'
+      : '');
+
+    // Embudo separado por origen, cuando el informe por canal está disponible.
+    var ce = desdeMedicion(filtrar('canales_embudo')).filter(aperturaPropia);
+    if(ce.length){
+      var g = { pago:{}, libre:{} };
+      ce.forEach(function(r){
+        var d = esPago(r.canal) ? g.pago : g.libre;
+        d[r.evento] = (d[r.evento]||0) + (Number(r.n)||0);
+      });
+      $('p3-origen').innerHTML = '<div class="grid2">' +
+        '<div class="card"><header><h2>Sin publicidad</h2><span class="pill">' +
+          n(g.libre.form_start||0) + ' aperturas</span></header>' +
+          '<div class="funnel" id="f-libre"></div></div>' +
+        '<div class="card"><header><h2>De publicidad</h2><span class="pill">' +
+          n(g.pago.form_start||0) + ' aperturas</span></header>' +
+          '<div class="funnel" id="f-pago"></div></div></div>';
+      // Los inscriptos se parten con el mismo criterio que las consultas: la
+      // columna "equivale" de la hoja dice a qué canal pertenece cada uno, y de
+      // ahí sale si ese canal es pago o no.
+      var icP = inscPorCanal(), insPago = 0, insLibre = 0;
+      Object.keys(icP).forEach(function(c){
+        if(esPago(c)) insPago += icP[c]; else insLibre += icP[c]; });
+
+      var pLibre = [['Abrieron',g.libre.form_start||0,marcaAp],
+                    ['Apretaron enviar',g.libre.SENDINFO||0],
+                    ['Consulta confirmada',g.libre.generate_lead||0]];
+      var pPago  = [['Abrieron',g.pago.form_start||0,marcaAp],
+                    ['Apretaron enviar',g.pago.SENDINFO||0],
+                    ['Consulta confirmada',g.pago.generate_lead||0]];
+      if(inscOk() && (insPago || insLibre)){
+        pLibre.push(['Se inscribieron', insLibre, 'otra-fuente']);
+        pPago.push(['Se inscribieron', insPago, 'otra-fuente']);
+      }
+      embudo('f-libre', pLibre);
+      embudo('f-pago',  pPago);
+    } else {
+      $('p3-origen').innerHTML = '';
+    }
+
+    var conNombre = desdeMedicion(filtrar('formularios')).filter(function(r){
+      return r.form_name && r.form_name !== '(not set)'; });
+    if(!conNombre.length){
+      $('p3-form').innerHTML = vacio('Todavía no se puede separar popup de página de consultas',
+        'El parámetro <code>form_name</code> llega vacío. Es el pendiente con el desarrollador. ' +
+        'Cuando se arregle, el desglose arranca ese día: las dimensiones personalizadas de ' +
+        'Analytics no rellenan hacia atrás.');
+      return;
+    }
+    // Sólo se dibujan los dos formularios que existen en el sitio. Cualquier otro
+    // form_name que aparezca (hubo envíos con "PRUEBA_TECNICA") es una prueba o
+    // un error de etiquetado: se nombra abajo, pero no se le arma una tarjeta —
+    // una tercera tarjeta con 2 consultas aplasta a las otras dos y no dice nada.
+    var CONOCIDOS = ['popup_carrera','pagina_consultas'];
+    var raros = {};
+    conNombre = conNombre.filter(function(r){
+      if(CONOCIDOS.indexOf(r.form_name) >= 0) return true;
+      if(r.evento==='generate_lead') raros[r.form_name] = (raros[r.form_name]||0) + (Number(r.n)||0);
+      else raros[r.form_name] = raros[r.form_name] || 0;
+      return false;
+    });
+    if(!conNombre.length){
+      $('p3-form').innerHTML = vacio('Sin datos de los dos formularios en este período',
+        'Llegaron envíos, pero ninguno con el nombre de un formulario del sitio.');
+      return;
+    }
+    var m = {};
+    conNombre.forEach(function(r){
+      m[r.form_name] = m[r.form_name] || { fs:0, si:0, gl:0 };
+      if(r.evento==='form_start')    m[r.form_name].fs += Number(r.n)||0;
+      if(r.evento==='SENDINFO')      m[r.form_name].si += Number(r.n)||0;
+      if(r.evento==='generate_lead') m[r.form_name].gl += Number(r.n)||0;
+    });
+    var NOMBRE_FORM = { popup_carrera:'Popup de la carrera',
+                        pagina_consultas:'Página de consultas' };
+    var DONDE_FORM  = { popup_carrera:'El recuadro naranja que se abre al tocar “+ INFO” en una carrera',
+                        pagina_consultas:'El formulario de <code>/formulario-consultas</code>' };
+
+    // Un paso que no llega etiquetado se ve enseguida: si "apretaron enviar"
+    // está en cero y las consultas no, el problema es el tag, no el formulario.
+    var roto = Object.keys(m).filter(function(k){ return m[k].si === 0 && m[k].gl > 0; });
+
+    $('p3-form').innerHTML = '<div class="grid2">' + Object.keys(m).map(function(k,i){
+      return '<div class="card"><header><div><h2>'+(NOMBRE_FORM[k]||k)+'</h2>' +
+        (DONDE_FORM[k]?'<p class="hint">'+DONDE_FORM[k]+'</p>':'') + '</div>' +
+        '<span class="pill">'+n(m[k].gl)+' consultas</span></header>' +
+        '<div class="funnel" id="f-'+i+'"></div></div>';
+    }).join('') + '</div>' +
+    (roto.length ? '<div class="card"><div class="note"><strong>El desglose por formulario ' +
+      'no cierra en los días anteriores al 22 de septiembre.</strong> El clic en ENVIAR ' +
+      '(<code>SENDINFO</code>) no llevaba el parámetro <code>form_name</code>, así que ese paso ' +
+      'aparece vacío en los dos. Y en la página de consultas tampoco se disparaba ' +
+      '<code>form_start</code> al abrir, por eso hay más consultas que aperturas. ' +
+      '<strong>Los dos se corrigieron en Tag Manager el 21 de septiembre de 2026</strong>: desde el 22 ' +
+      'esos pasos se llenan solos. Lo anterior queda así, porque Analytics no completa hacia ' +
+      'atrás. Para los días previos, lo confiable de esta sección es la última fila — cuántas ' +
+      'consultas salió de cada formulario.</div></div>' : '') +
+    (Object.keys(raros).length ? '<div class="card"><div class="note"><strong>Quedaron afuera ' +
+      'envíos con un nombre de formulario que no existe en el sitio:</strong> ' +
+      Object.keys(raros).map(function(k){ return '<code>'+k+'</code> ('+n(raros[k])+' consultas)'; }).join(', ') +
+      '. Parecen pruebas técnicas. Sí están contadas en el embudo completo de arriba.</div></div>' : '');
+
+    Object.keys(m).forEach(function(k,i){
+      embudo('f-'+i, [['Abrieron',m[k].fs,
+        (k==='pagina_consultas' && aperturasIncompletas()) ? 'incompleto' : undefined],
+        ['Apretaron enviar',m[k].si],['Consulta confirmada',m[k].gl]]);
+    });
+  }
+
+  /**
+   * Cada paso muestra las dos caras del mismo número: qué porcentaje sigue y
+   * qué porcentaje se perdió. Un paso en cero con pasos posteriores en positivo
+   * no es una caída del 100%: es un paso que no se está midiendo, y se dibuja
+   * distinto para que nadie lea una catástrofe donde hay un tag faltante.
+   *
+   * Un paso puede traer un tercer valor, 'otra-fuente'. Ese paso no se compara
+   * con el anterior: los inscriptos salen de la hoja de cálculo y corresponden a
+   * consultas de meses previos, así que escribir "se pierde 95%" ahí sería
+   * inventar una fuga que no existe. Se muestra el número y nada más.
+   */
+  function embudo(el, pasos){
+    var host = $(el); if(!host) return;
+    var ramp = ['--o1','--o2','--o3','--o3'];
+    var medido = pasos.map(function(p,i){
+      return p[1] > 0 || !pasos.slice(i+1).some(function(q){ return q[1] > 0; });
+    });
+    var top = pasos[0][1] || Math.max.apply(null, pasos.map(function(p){ return p[1]; })) || 1;
+
+    host.innerHTML = pasos.map(function(p,i){
+      if(!medido[i]){
+        return '<div class="fstep"><span class="lab">'+p[0]+'</span>' +
+          '<span class="track vacio">sin medir</span>' +
+          '<span class="sigue first">—</span><span class="drop first">—</span></div>';
+      }
+      var ant = null;
+      for(var j=i-1;j>=0;j--){ if(medido[j]){ ant = pasos[j][1]; break; } }
+      var otra = p[2] === 'otra-fuente';
+      var incompleto = p[2] === 'incompleto';
+      // Un paso con más que el anterior no "sigue" un 145%: quiere decir que el
+      // paso anterior está contado de menos. Se muestra "—" y la razón abajo.
+      var excede = i>0 && ant && p[1] > ant && !otra;
+      var sigue = (i===0 || !ant || excede) ? '—' : nf1.format(p[1]/ant*100)+'%';
+      // Si un paso tiene más que el anterior no hay pérdida que mostrar: poner
+      // "−0,0%" ahí sugiere que la cuenta cierra, y lo que pasa es lo contrario.
+      // En un paso de otra fuente tampoco: los que todavía no se inscribieron no
+      // son gente que se perdió, son consultas que siguen abiertas. El % que
+      // sigue sí se muestra — es la pregunta que importa — pero su complemento
+      // no es una fuga y escribirlo en rojo diría algo falso.
+      var drop  = (i===0 || !ant || otra || p[1] >= ant) ? '—'
+                : '−'+nf1.format((1-p[1]/ant)*100)+'%';
+      return '<div class="fstep"><span class="lab">'+p[0]+
+        (otra ? '<div class="sub" style="text-align:left">hoja de cálculo</div>' : '')+
+        (incompleto ? '<div class="sub" style="text-align:left">'+NOTA_APERTURAS+'</div>' : '')+
+        (excede ? '<div class="sub" style="text-align:left">más que el paso anterior</div>' : '')+'</span>' +
+        '<span class="track"><span class="fill" style="width:'+Math.min(p[1]/top*100,100).toFixed(1)+
+        '%;background:var('+ramp[i]+')">'+n(p[1])+'</span></span>' +
+        '<span class="sigue'+(i===0?' first':'')+'">'+sigue+'</span>' +
+        '<span class="drop'+(i===0?' first':'')+'">'+drop+'</span></div>';
+    }).join('') +
+    '<div class="fleyenda"><span class="lab"></span><span></span>' +
+    '<span class="sigue first">sigue</span><span class="drop first">se pierde</span></div>';
+  }
+
+  /* ── 4 ── */
+  function p4(){
+    var vals = CONTACTO.map(function(c){ return [c[1], evento(c[0]), c[2], c[3]]; })
+                       .filter(function(c){ return c[1] > 0; });
+    var total = vals.reduce(function(s,c){ return s+c[1]; }, 0);
+    $('ct-total').textContent = n(total) + ' en total';
+    $('t-cont').innerHTML = vals.map(function(c){
+      return '<tr><td>'+c[0]+'<div class="sub" style="text-align:left">'+c[2]+'</div></td>'+
+        '<td class="sub" style="text-align:left">'+c[3]+'</td>'+
+        '<td>'+n(c[1])+'</td><td>'+(total?pc(c[1]/total*100):'—')+'</td></tr>';
+    }).join('');
+    D._contacto = vals;
+    p4deriva();
+  }
+
+  /* El viaje de vuelta: la campaña de Meta lleva a WhatsApp, y desde WhatsApp
+     una persona del equipo manda un link con UTM a la web. Analytics ve esa
+     segunda visita como una sesión nueva con su propia fuente. */
+  /* Lee las dos convenciones a la vez. La vieja mete persona y destino dentro
+     de utm_source; la nueva usa utm_content para la persona y utm_campaign para
+     el destino. Analytics no reescribe el pasado, así que las dos tienen que
+     convivir mientras el período incluya días de antes del cambio. */
+  function etiquetaUtm(r){
+    var f = String(r.fuente||'').toLowerCase();
+    var m = String(r.medio||'').toLowerCase();
+    var c = String(r.contenido||'').toLowerCase();
+    var k = String(r.campania_utm||'').toLowerCase();
+
+    if(f === 'whatsapp' || m === 'mensajeria')
+      return { canal:'WhatsApp', quien: cap(limpio(c)), destino: destinoUtm(k) };
+    if(m === 'bio' || f.indexOf('bio_ig') === 0)
+      return { canal:'Instagram · bio', quien:'—', destino: destinoUtm(k || f.replace(/^bio_ig_?/,'')) };
+
+    var p = f.split('_');
+    if(p[0] === 'wapp')
+      return { canal:'WhatsApp', quien: cap(p[1]||'—'), destino: destinoUtm(p.slice(2).join('_')) };
+    return null;
+  }
+  function limpio(v){ return (!v || v === '(not set)') ? '—' : v; }
+  function destinoUtm(d){
+    d = String(d||'').toLowerCase();
+    if(!d || d === '(not set)') return 'Home';
+    if(d.indexOf('formulario') >= 0 || d.indexOf('formconsultas') >= 0 ||
+       d.indexOf('infocarreras') >= 0 || d.indexOf('info_carreras') >= 0) return 'Formulario de consultas';
+    if(d.indexOf('fuclab') >= 0) return 'FUCLAB';
+    if(d.indexOf('web_general') >= 0 || d.indexOf('webgeneral') >= 0) return 'Home';
+    return d;
+  }
+  function cap(s){ return s === '—' ? s : s.charAt(0).toUpperCase() + s.slice(1); }
+
+  function p4deriva(){
+    var caja = $('p4-deriva');
+    if(!(D.utm_sesiones||[]).length){
+      caja.innerHTML = vacio('Derivaciones sin datos todavía',
+        'El informe de UTM no devolvió filas. Si acabás de agregarlo, corré <code>actualizar</code> una vez más.');
+      return;
+    }
+    var s = {}, l = {};
+    filtrar('utm_sesiones').forEach(function(r){
+      var e = etiquetaUtm(r); if(!e) return;
+      var k = e.canal+'|'+e.quien+'|'+e.destino;
+      s[k] = (s[k]||0) + (Number(r.sesiones)||0);
+    });
+    filtrar('utm_leads').forEach(function(r){
+      var e = etiquetaUtm(r); if(!e) return;
+      var k = e.canal+'|'+e.quien+'|'+e.destino;
+      l[k] = (l[k]||0) + (Number(r.leads)||0);
+    });
+
+    var claves = Object.keys(s).sort(function(a,b){ return (l[b]||0)-(l[a]||0) || s[b]-s[a]; });
+    if(!claves.length){
+      caja.innerHTML = vacio('Ninguna sesión con los UTM de derivación',
+        'Analytics no vio todavía visitas con <code>wapp_…</code> ni <code>bio_ig…</code> en el período elegido. ' +
+        'Si los links recién se pusieron en circulación, es lo esperado: las sesiones aparecen desde ese día.');
+      return;
+    }
+    var ses = claves.reduce(function(t,k){ return t+s[k]; },0);
+    var lds = claves.reduce(function(t,k){ return t+(l[k]||0); },0);
+
+    // Inscriptos que la hoja de cálculo atribuye a una derivación del equipo.
+    // Es un total, no se puede abrir por persona: la hoja guarda el canal, no
+    // el utm_content. Para saber quién derivó a cada inscripto habría que
+    // cargar también ese dato, y no vale la pena pedírselo a nadie.
+    var insWa = inscOk() ? (inscPorCanal()['Derivación de WhatsApp']||0) : 0;
+
+    caja.innerHTML =
+      '<div class="card"><header><div><h2>De WhatsApp y de la bio a la web</h2>' +
+      '<p class="hint">Cuando alguien del equipo manda un link con UTM desde el chat, Analytics ve ' +
+      'una visita nueva con esa marca. Son las consultas que empezaron en una conversación ' +
+      'y terminaron en el formulario.</p></div>' +
+      '<span class="pill">' + n(lds) + ' consultas · ' + n(ses) + ' sesiones' +
+      (insWa ? ' · ' + n(insWa) + ' inscriptos' : '') + '</span></header>' +
+      (insWa ? '<div class="note"><strong>' + n(insWa) + ' de los inscriptos del período ' +
+        'llegaron por una derivación del equipo</strong>, según la hoja de cálculo. Ese número ' +
+        'no se puede abrir por persona: la hoja guarda el canal, no quién mandó el link. ' +
+        'La tabla de abajo sí muestra quién deriva, pero hasta la consulta.</div>' : '') +
+      '<div class="tw"><table><thead><tr><th>Origen</th><th>Quién deriva</th><th>A dónde</th>' +
+      '<th>Sesiones</th><th>Consultas</th><th>Conversión</th></tr></thead><tbody>' +
+      claves.map(function(k){
+        var p = k.split('|'), sv = s[k], lv = l[k]||0;
+        return '<tr><td>'+p[0]+'</td><td>'+p[1]+'</td><td>'+p[2]+'</td><td>'+n(sv)+
+          '</td><td>'+n(lv)+'</td><td>'+(sv?pc(lv/sv*100):'—')+'</td></tr>';
+      }).join('') +
+      '</tbody><tfoot><tr><td>Total</td><td></td><td></td><td>'+n(ses)+'</td><td>'+n(lds)+
+      '</td><td>'+(ses?pc(lds/ses*100):'—')+'</td></tr></tfoot></table></div>' +
+      '<div class="note"><strong>Estas consultas cuentan como "Sin publicidad".</strong> ' +
+      'Y está bien que así sea: no se puede probar que la conversación haya empezado en un ' +
+      'aviso pago — pudo venir de la bio, del botón de WhatsApp del sitio o de un conocido. ' +
+      'Por eso no se le acreditan a Meta. Este bloque es el lugar donde ese tráfico se ve ' +
+      'aparte, con nombre y apellido de quién lo derivó.</div></div>';
+  }
+
+  /* ── 5 ── */
+  function p5(){ p5google(); p5meta(); }
+
+  function p5google(){
+    var filas = filtrar('google_ads');
+    if(!filas.length){ $('p5-cuerpo').innerHTML = vacio('Sin datos de Google Ads',
+      'El informe de costos no devolvió filas para este período.'); return; }
+    var camp = {};
+    filas.forEach(function(r){
+      var k = String(r.campania_id);
+      camp[k] = camp[k] || { nombre:r.campania, costo:0, clics:0, impr:0,
+                             marca:(D.campanias_marca||[]).indexOf(k)>=0 };
+      camp[k].costo += Number(r.costo)||0;
+      camp[k].clics += Number(r.clics)||0;
+      camp[k].impr  += Number(r.impresiones)||0;
+    });
+    var lista = Object.keys(camp).map(function(k){ return camp[k]; })
+      .sort(function(a,b){ return b.costo-a.costo; });
+    var inv = lista.reduce(function(s,c){ return s+c.costo; },0);
+    var clics = lista.reduce(function(s,c){ return s+c.clics; },0);
+    var impr = lista.reduce(function(s,c){ return s+c.impr; },0);
+    var marca = lista.filter(function(c){ return c.marca; }).reduce(function(s,c){ return s+c.clics; },0);
+    // Consultas de canales de Google: pagos menos Paid Social, que es Meta.
+    // Si se mezclaran, la inversión de Google quedaría dividida por consultas que trajo Meta.
+    var lc = porClave('canales_leads','canal','leads'), lp = 0;
+    Object.keys(lc).forEach(function(c){ if(esPago(c) && c !== 'Paid Social') lp += lc[c]; });
+    // Conversión sobre sesiones, no sobre clics: un clic no es una sesión, y
+    // dividir consultas por clics mezcla dos sistemas de conteo distintos.
+    var scg = porClave('canales_sesiones','canal','sesiones'), sesG = 0;
+    Object.keys(scg).forEach(function(c){ if(esPago(c) && c !== 'Paid Social') sesG += scg[c]; });
+
+    // Inscriptos que la hoja de cálculo atribuye a búsqueda paga. Paid Social
+    // queda afuera igual que en las consultas: esa es la plata de Meta.
+    var icG = inscPorCanal(), insG = 0;
+    Object.keys(icG).forEach(function(c){ if(esPago(c) && c !== 'Paid Social') insG += icG[c]; });
+
+    $('p5-cuerpo').innerHTML = '<div class="kpis">' +
+      tarjeta('','Inversión Google', money(inv), n(clics)+' clics · '+n(impr)+' impresiones') +
+      tarjeta('','Consultas de Google', n(lp), 'atribuidas por Analytics, sin Paid Social') +
+      tarjeta('','Cómo convierte', sesG?pc(lp/sesG*100):'—',
+              sesG ? n(lp)+' consultas sobre '+n(sesG)+' sesiones' : 'sin sesiones en el período') +
+      tarjeta('','Costo por consulta', lp?money(inv/lp):'—', 'inversión Google ÷ sus consultas') +
+      (inscOk() ? tarjeta('','Inscriptos de Google', n(insG),
+              'según la hoja de cálculo, sin Paid Social') : '') +
+      (inscOk() ? tarjeta('','Costo por inscripto', insG?money(inv/insG):'—',
+              insG ? (mes==='todo' ? 'inversión del período ÷ inscriptos del período' : 'inversión del mes ÷ inscriptos del mes')
+                   : 'ningún inscripto del período vino de búsqueda paga') : '') +
+      tarjeta('','Clics de marca', clics?Math.round(marca/clics*100)+'%':'—',
+              'gente que ya buscaba UCINE por nombre') +
+      '</div>' +
+      (inscOk() && insG ? '<div class="card"><div class="note"><strong>El costo por inscripto ' +
+        'de arriba es del período, no de la cohorte.</strong> Esos inscriptos vienen de ' +
+        'consultas que pudieron entrar hace meses, con la inversión de esos meses. Sirve para ' +
+        'ver el orden de magnitud y para comparar Google contra Meta en el mismo período; no ' +
+        'sirve para decir cuánto costó conseguir a cada uno. Eso se sabe al cerrar el ciclo.' +
+        '</div></div>' : '') +
+      '<div class="card"><header><div><h2>Campaña por campaña</h2>' +
+      '<p class="hint">Marca y no-marca se clasifican por ID de campaña, no por el nombre: si ' +
+      'alguien renombra la campaña, el tablero sigue funcionando.</p></div></header>' +
+      '<div class="tw"><table><thead><tr><th>Campaña</th><th>Tipo</th><th>Impresiones</th>' +
+      '<th>Clics</th><th>Inversión</th><th>Costo / clic</th></tr></thead><tbody>' +
+      lista.map(function(c){
+        return '<tr><td>'+c.nombre+'</td><td>'+(c.marca?'Marca':'No-marca')+'</td><td>'+n(c.impr)+
+          '</td><td>'+n(c.clics)+'</td><td>'+money(c.costo)+'</td><td>'+
+          (c.clics?money(c.costo/c.clics):'—')+'</td></tr>';
+      }).join('') + '</tbody><tfoot><tr><td>Total</td><td></td><td>'+n(impr)+'</td><td>'+
+      n(clics)+'</td><td>'+money(inv)+'</td><td>'+(clics?money(inv/clics):'—')+
+      '</td></tr></tfoot></table></div>' +
+      '<div class="note"><strong>El costo por consulta no se puede abrir por campaña.</strong> ' +
+      'Analytics no permite pedir el costo y los eventos en el mismo informe, así que la ' +
+      'inversión llega por campaña y las consultas por canal. Para el detalle por campaña ' +
+      'hace falta la API de Google Ads.</div></div>';
+  }
+
+  /* Meta. Cuenta compartida con FUCLAB: entran sólo las campañas cuyo nombre
+     contiene el filtro. Los leads que informa Meta viven en su propia columna
+     y no se suman jamás con los de Analytics: son dos formas distintas de contar. */
+  function p5meta(){
+    var caja = $('p5-meta');
+    var f = (D.fuentes && D.fuentes.meta) || {};
+
+    if(f.estado !== 'ok'){
+      caja.innerHTML = '<div class="card"><header><div><h2>Meta</h2>' +
+        '<p class="hint">Cuenta ' + (D.meta_cuenta||'—') + '</p></div></header>' +
+        '<div class="vacio"><strong>' +
+        (f.estado === 'error' ? 'La API devolvió un error' : 'No conectado') + '</strong>' +
+        (f.mensaje ? '<code>'+f.mensaje+'</code>' :
+         'Falta el token de System User en las propiedades del script.') + '</div></div>';
+      return;
+    }
+
+    var filas = filtrar('meta');
+    if(!filas.length){
+      caja.innerHTML = vacio('Meta sin datos en este período',
+        'La conexión funciona, pero no hay campañas con "' + (D.meta_filtro||'') +
+        '" en el nombre con actividad en estas fechas.');
+      return;
+    }
+
+    var camp = {};
+    filas.forEach(function(r){
+      var k = String(r.campania_id);
+      camp[k] = camp[k] || { nombre:r.campania, objetivo:r.objetivo||'', costo:0, impr:0,
+                             clics:0, enlace:0, leads:0, conv:0 };
+      camp[k].costo  += Number(r.costo)||0;
+      camp[k].impr   += Number(r.impresiones)||0;
+      camp[k].clics  += Number(r.clics)||0;
+      camp[k].enlace += Number(r.clics_enlace)||0;
+      camp[k].leads  += Number(r.leads_meta)||0;
+      camp[k].conv   += Number(r.conversaciones)||0;
+    });
+    var lista = Object.keys(camp).map(function(k){ return camp[k]; })
+      .sort(function(a,b){ return b.costo-a.costo; });
+    var inv    = lista.reduce(function(s,c){ return s+c.costo; },0);
+    var impr   = lista.reduce(function(s,c){ return s+c.impr; },0);
+    var enlace = lista.reduce(function(s,c){ return s+c.enlace; },0);
+    var leads  = lista.reduce(function(s,c){ return s+c.leads; },0);
+    var convo  = lista.reduce(function(s,c){ return s+c.conv; },0);
+
+    // Lo que Analytics ve del mismo esfuerzo, para poder contrastar sin sumar.
+    var lc = porClave('canales_leads','canal','leads');
+    var social = (lc['Paid Social']||0);
+
+    var fuera = D.meta_excluidas || [];
+
+    caja.innerHTML =
+      '<div class="kpis">' +
+      tarjeta('','Inversión Meta', money(inv), n(impr)+' impresiones · '+n(enlace)+' clics al sitio') +
+      tarjeta('','Conversaciones de WhatsApp', n(convo),
+              convo?'costo por conversación '+money(inv/convo):'campañas de mensajes') +
+      tarjeta('','Consultas según Analytics', n(social), 'canal Paid Social, formulario confirmado') +
+      (inscOk() ? tarjeta('','Inscriptos de Meta', n(inscPorCanal()['Paid Social']||0),
+              'según la hoja de cálculo, canal Paid Social') : '') +
+      tarjeta('','Leads según Meta', n(leads), leads?'los cuenta Meta, con su ventana':'esta cuenta no reporta leads') +
+      '</div>' +
+      '<div class="card"><header><div><h2>Campaña por campaña · Meta</h2>' +
+      '<p class="hint">La cuenta publicitaria es compartida con FUCLAB. Entran sólo las campañas ' +
+      'que dicen <code>' + (D.meta_filtro||'') + '</code> en el nombre.</p></div></header>' +
+      '<div class="tw"><table><thead><tr><th>Campaña</th><th>Objetivo</th><th>Impresiones</th>' +
+      '<th>Clics al sitio</th><th>Inversión</th><th>Conversaciones</th>' +
+      '<th>Leads · Meta</th></tr></thead><tbody>' +
+      lista.map(function(c){
+        return '<tr><td>'+c.nombre+'</td><td>'+objetivoMeta(c.objetivo)+'</td><td>'+n(c.impr)+
+          '</td><td>'+n(c.enlace)+'</td><td>'+money(c.costo)+'</td><td>'+n(c.conv)+
+          '</td><td>'+n(c.leads)+'</td></tr>';
+      }).join('') +
+      '</tbody><tfoot><tr><td>Total</td><td></td><td>'+n(impr)+'</td><td>'+n(enlace)+'</td><td>'+
+      money(inv)+'</td><td>'+n(convo)+'</td><td>'+n(leads)+
+      '</td></tr></tfoot></table></div>' +
+      '<div class="note"><strong>Una conversación iniciada no es una consulta.</strong> ' +
+      'Las campañas de mensajes no mandan a nadie al sitio: producen gente que abre el chat. ' +
+      'Esa columna no se suma nunca a las consultas del formulario, y no se renombra a "leads" ' +
+      '— el nombre es lo único que impide que alguien las sume. El puente entre las dos cosas ' +
+      'está en la página 4: cuando el equipo manda desde el chat un link con UTM, esa visita ' +
+      'sí aparece en Analytics.</div>' +
+      (fuera.length ? '<div class="note">Campañas de la cuenta que quedaron afuera por no decir ' +
+        '<code>' + (D.meta_filtro||'') + '</code>: ' + fuera.join(' · ') + '</div>' : '') +
+      '</div>';
+  }
+
+  function objetivoMeta(o){
+    var m = { OUTCOME_TRAFFIC:'Tráfico', LINK_CLICKS:'Tráfico',
+              OUTCOME_ENGAGEMENT:'Mensajes', MESSAGES:'Mensajes', POST_ENGAGEMENT:'Interacción',
+              OUTCOME_LEADS:'Leads', LEAD_GENERATION:'Leads',
+              OUTCOME_SALES:'Ventas', CONVERSIONS:'Conversiones',
+              OUTCOME_AWARENESS:'Alcance', REACH:'Alcance', VIDEO_VIEWS:'Video' };
+    return m[o] || (o ? o.replace('OUTCOME_','').toLowerCase() : '—');
+  }
+
+  function vacio(t,p){ return '<div class="card"><div class="vacio"><strong>'+t+'</strong>'+p+'</div></div>'; }
+
+  /* ── 6 ── */
+  function p6(){
+    var si = evento('SENDINFO'), gl = evento('generate_lead');
+    var carreras = filtrar('carreras'), forms = filtrar('formularios');
+    var ns = function(filas, campo){
+      var t=0,x=0;
+      filas.forEach(function(r){ var v=Number(r.n)||0; t+=v;
+        if(!r[campo] || r[campo]==='(not set)') x+=v; });
+      return t ? x/t*100 : 0;
+    };
+    var rc = ns(carreras,'carrera'), rf = ns(forms,'form_name'), ratio = gl ? si/gl : 0;
+
+    var filas = [
+      ['Clics en Enviar ÷ consultas', si&&gl?nf1.format(ratio):'—', '> 1,30',
+        ratio>1.3?['c','Revisar']:['g','Normal'], 'Fricción del formulario, o doble disparo de SENDINFO'],
+      ['Carrera sin identificar', pc(rc), '> 5%',
+        rc>5?['w','Atención']:['g','Normal'], 'Si sube, la página 2 queda incompleta'],
+      ['Formulario sin identificar', pc(rf), '> 5%',
+        rf>5?['c','Revisar']:['g','Normal'], 'Pendiente con el desarrollador: bloquea el desglose de la página 3'],
+      ['Consultas del período', n(gl), '—', ['n','—'], 'El número que manda el tablero']
+    ];
+    $('t-salud').innerHTML = filas.map(function(f){
+      return '<tr><td>'+f[0]+'</td><td>'+f[1]+'</td><td class="sub">'+f[2]+'</td>'+
+        '<td style="text-align:left"><span class="tag '+f[3][0]+'">'+f[3][1]+'</span> '+
+        '<span class="sub">'+f[4]+'</span></td></tr>';
+    }).join('');
+
+    var est = D.estado || {};
+    $('t-estado').innerHTML = Object.keys(est).map(function(k){
+      var e = est[k];
+      return '<tr><td>'+k+'</td><td>'+n(e.filas)+'</td><td style="text-align:left">'+
+        '<span class="tag '+(e.ok?'g':'c')+'">'+(e.ok?'ok':'error')+'</span></td>'+
+        '<td class="sub" style="text-align:left">'+(e.mensaje||'—')+'</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="sub">Sin registro todavía.</td></tr>';
+
+    var sinMapeo = D.inscriptos_sin_mapeo || [], descInsc = D.inscriptos_descartadas || [];
+    var fuera = D.meta_excluidas || [], acc = D.meta_acciones || [];
+    $('p6-meta').innerHTML = '<div class="card"><header><div><h2>Cómo se aísla UCINE en Meta</h2>' +
+      '<p class="hint">La cuenta publicitaria es compartida. El corte se hace por nombre de ' +
+      'campaña, así que una campaña nueva mal nombrada queda invisible en el tablero.</p></div></header>' +
+      '<div class="tw"><table><tbody>' +
+      '<tr><td>Cuenta publicitaria</td><td>' + (D.meta_cuenta||'—') + '</td></tr>' +
+      '<tr><td>Regla</td><td>el nombre de la campaña contiene <code>' + (D.meta_filtro||'—') + '</code></td></tr>' +
+      '<tr><td>Campañas descartadas</td><td>' + (fuera.length ? fuera.join(' · ') : '—') + '</td></tr>' +
+      '<tr><td>Conversiones que informa la cuenta</td><td class="sub">' +
+        (acc.length ? acc.join(' · ') : '—') + '</td></tr>' +
+      '</tbody></table></div></div>' +
+      (sinMapeo.length ? '<div class="card"><header><div><h2>Carreras de la hoja sin traducir</h2>' +
+        '<p class="hint">Están escritas de una forma que no figura en la solapa ' +
+        '<code>CARRERAS</code> de la hoja de cálculo. Entran igual al tablero, con el nombre tal ' +
+        'cual vino, pero aparecen como una carrera aparte en vez de sumarse a la que ' +
+        'corresponde.</p></div></header>' +
+        '<div class="tw"><table><tbody>' + sinMapeo.map(function(c){
+          return '<tr><td>'+c+'</td></tr>'; }).join('') + '</tbody></table></div></div>' : '') +
+      (descInsc.length ? '<div class="card"><header><div><h2>Filas de la hoja que no se pudieron leer</h2>' +
+        '<p class="hint">Están cargadas pero no entran al tablero. Son inscriptos reales que ' +
+        'hoy no se están contando.</p></div>' +
+        '<span class="pill">'+n(descInsc.length)+'</span></header>' +
+        '<div class="tw"><table><tbody>' + descInsc.map(function(d){
+          return '<tr><td>'+d+'</td></tr>'; }).join('') + '</tbody></table></div></div>' : '');
+  }
+
+  /* ── gráficos ── */
+  function T(){
+    var s = getComputedStyle(document.documentElement), g = function(k){ return s.getPropertyValue(k).trim(); };
+    return { ink:g('--ink'), ink2:g('--ink-2'), muted:g('--muted'), grid:g('--grid'),
+             axis:g('--axis'), surface:g('--surface'), b:g('--s-b'), marca:g('--marca') };
+  }
+  function base(t){
+    return { responsive:true, maintainAspectRatio:false, animation:false,
+      interaction:{ mode:'index', intersect:false },
+      plugins:{ legend:{display:false},
+        tooltip:{ backgroundColor:t.surface, titleColor:t.ink, bodyColor:t.ink2,
+          borderColor:t.axis, borderWidth:1, padding:11, cornerRadius:9, displayColors:false,
+          titleFont:{weight:'700'} } },
+      scales:{ x:{ grid:{display:false}, border:{color:t.axis},
+                   ticks:{ color:t.muted, font:{size:11}, maxRotation:0, autoSkip:true, maxTicksLimit:12 } },
+               y:{ grid:{color:t.grid, drawTicks:false}, border:{display:false},
+                   ticks:{ color:t.muted, font:{size:11}, padding:8, maxTicksLimit:6, precision:0 } } } };
+  }
+  function destruir(){ Object.keys(charts).forEach(function(k){ charts[k].destroy(); }); charts = {}; }
+
+  function graficos(pagina){
+    var t = T();
+    if(pagina === 'p1'){
+      // Analytics devuelve las filas ordenadas por métrica, no por fecha.
+      // Sin este sort el eje temporal queda salteado y la línea no significa nada.
+      var dias = filtrar('dias').slice().sort(function(a,b){
+        return String(a.fecha) < String(b.fecha) ? -1 : 1; });
+      var fechas = dias.map(function(r){ return String(r.fecha); });
+      var etq = fechas.map(function(f){ return f.slice(8,10)+'/'+f.slice(5,7); });
+
+      /* Consultas por día, separadas por origen. */
+      var lpd = {}, lld = {};
+      filtrar('canales_leads').forEach(function(r){
+        var d = esPago(r.canal) ? lpd : lld;
+        d[r.fecha] = (d[r.fecha]||0) + (Number(r.leads)||0);
+      });
+      hacer('c-dia', { type:'bar', data:{ labels:etq, datasets:[
+        { label:'Sin publicidad', data:fechas.map(function(f){ return lld[f]||0; }),
+          backgroundColor:cv('--s-a'), borderRadius:4, borderSkipped:false,
+          barPercentage:.78, categoryPercentage:.96, stack:'x' },
+        { label:'De publicidad', data:fechas.map(function(f){ return lpd[f]||0; }),
+          backgroundColor:cv('--s-c'), borderRadius:4, borderSkipped:false,
+          barPercentage:.78, categoryPercentage:.96, stack:'x' } ] },
+        options: conLeyenda(base(t), { x:{stacked:true}, y:{stacked:true} }) });
+
+      /* Sesiones por día: la publicidad como una serie, y el tráfico que llega
+         solo abierto por canal — que es la pregunta real, de dónde viene. */
+      var series = seriesCanal(fechas);
+      hacer('c-ses', { type:'line', data:{ labels:etq, datasets: series.map(function(s){
+          return { label:s.nombre, data:s.datos, borderColor:s.color, backgroundColor:s.color,
+                   borderWidth:2, pointRadius:0, pointHoverRadius:4, tension:.3, fill:false };
+        }) }, options: conLeyenda(base(t)) });
+
+      var sc = porClave('canales_sesiones','canal','sesiones');
+      var lc = porClave('canales_leads','canal','leads');
+      var orden = Object.keys(sc).sort(function(a,b){ return (lc[b]||0)-(lc[a]||0); }).slice(0,8);
+      var css = getComputedStyle(document.documentElement);
+      var cPago = css.getPropertyValue('--s-c').trim();
+      var cLibre = css.getPropertyValue('--s-a').trim();
+      hacer('c-canal', { type:'bar', data:{ labels:orden, datasets:[{
+        data:orden.map(function(c){ return lc[c]||0; }),
+        backgroundColor:orden.map(function(c){ return esPago(c) ? cPago : cLibre; }),
+        borderRadius:5, borderSkipped:false, barPercentage:.74 }] },
+        options: Object.assign(base(t), { indexAxis:'y',
+          scales:{ x:{ grid:{color:t.grid,drawTicks:false}, border:{display:false},
+                       ticks:{color:t.muted,font:{size:11},precision:0} },
+                   y:{ grid:{display:false}, border:{color:t.axis},
+                       ticks:{color:t.ink2,font:{size:12},autoSkip:false} } } }) });
+    }
+    if(pagina === 'p4' && D._contacto && D._contacto.length){
+      hacer('c-cont', { type:'bar', data:{ labels:D._contacto.map(function(c){ return c[0]; }),
+        datasets:[{ data:D._contacto.map(function(c){ return c[1]; }), backgroundColor:t.b,
+          borderRadius:5, borderSkipped:false, barPercentage:.7 }] },
+        options: Object.assign(base(t), { indexAxis:'y',
+          scales:{ x:{ grid:{color:t.grid,drawTicks:false}, border:{display:false},
+                       ticks:{color:t.muted,font:{size:11}} },
+                   y:{ grid:{display:false}, border:{color:t.axis},
+                       ticks:{color:t.ink2,font:{size:12},autoSkip:false} } } }) });
+    }
+  }
+  function cv(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+  /** Leyenda arriba, con punto en vez de cuadrado, y el texto en tinta —
+   *  el color lo lleva el punto, no la palabra. */
+  function conLeyenda(op, escalas){
+    var o = Object.assign({}, op);
+    o.plugins = Object.assign({}, op.plugins, { legend:{ display:true, position:'top',
+      align:'end', labels:{ usePointStyle:true, pointStyle:'circle', boxWidth:7, boxHeight:7,
+        padding:14, color:cv('--ink-2'), font:{ size:11.5, family:'Figtree, Arial, sans-serif' } } } });
+    if(escalas){
+      o.scales = { x: Object.assign({}, op.scales.x, escalas.x),
+                   y: Object.assign({}, op.scales.y, escalas.y) };
+    }
+    return o;
+  }
+
+  /* Canales con color fijo. El color sigue al canal, no a su puesto en el
+     ranking: si un mes cae uno, los demás no cambian de color. */
+  var COLOR_CANAL = { 'Organic Search':'--c1', 'Direct':'--c2',
+                      'Organic Social':'--c3', 'Referral':'--c4' };
+
+  function seriesCanal(fechas){
+    var porCanal = {}, pago = {};
+    filtrar('canales_sesiones').forEach(function(r){
+      var v = Number(r.sesiones)||0;
+      if(esPago(r.canal)){ pago[r.fecha] = (pago[r.fecha]||0) + v; return; }
+      porCanal[r.canal] = porCanal[r.canal] || {};
+      porCanal[r.canal][r.fecha] = (porCanal[r.canal][r.fecha]||0) + v;
+    });
+    var total = function(o){ return Object.keys(o).reduce(function(s,k){ return s+o[k]; },0); };
+    var nombres = Object.keys(porCanal).sort(function(a,b){ return total(porCanal[b])-total(porCanal[a]); });
+
+    // Con color fijo sólo entran los cuatro canales conocidos; el resto se
+    // pliega en "Otros". Un quinto color inventado rompería la validación.
+    var propios = nombres.filter(function(c){ return COLOR_CANAL[c]; }).slice(0,4);
+    var resto   = nombres.filter(function(c){ return propios.indexOf(c) === -1; });
+
+    var series = propios.map(function(c){
+      return { nombre:c, color:cv(COLOR_CANAL[c]),
+               datos: fechas.map(function(f){ return porCanal[c][f]||0; }) };
+    });
+    if(resto.length){
+      series.push({ nombre:'Otros sin publicidad', color:cv('--c5'),
+        datos: fechas.map(function(f){
+          return resto.reduce(function(s,c){ return s + (porCanal[c][f]||0); }, 0); }) });
+    }
+    series.push({ nombre:'De publicidad', color:cv('--s-c'),
+      datos: fechas.map(function(f){ return pago[f]||0; }) });
+    return series;
+  }
+
+  function hacer(id, cfg){
+    var cv = document.getElementById(id); if(!cv) return;
+    if(charts[id]) charts[id].destroy();
+    charts[id] = new Chart(cv.getContext('2d'), cfg);
+  }
+})();
+</script>
+</body>
+</html>
