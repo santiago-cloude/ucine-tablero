@@ -503,6 +503,20 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
   var APERTURAS_DESDE = '2026-09-22';
   var NOTA_APERTURAS = 'incompleto antes del 22-sep';
   function aperturasIncompletas(){ return mes === 'todo' || mes <= APERTURAS_DESDE.slice(0,7); }
+  /** ¿Se puede comparar contra ese mes? Sólo si ya se medía lo que se compara.
+   *  Contra un mes sin consultas medidas, cualquier mes nuevo "sube 1.000%". */
+  function comparable(m, desde){ return !!m && m > desde.slice(0,7); }
+  /** Lo que se puede decir de las aperturas: sólo desde el día en que se miden
+   *  completas. Devuelve {fs, si, gl} de esos días dentro del período elegido. */
+  function ventanaCompleta(){
+    var f = function(filas){ return filas.filter(function(r){
+      return String(r.fecha).slice(0,10) >= APERTURAS_DESDE; }); };
+    var fs = f(filtrar('formularios')).reduce(function(t,r){
+      return (r.evento==='form_start' && FORMS_CONOCIDOS.indexOf(r.form_name)>=0) ? t+(Number(r.n)||0) : t; },0);
+    var ev = function(nom){ return f(filtrar('eventos')).reduce(function(t,r){
+      return r.evento===nom ? t+(Number(r.n)||0) : t; },0); };
+    return { fs:fs, si:ev('SENDINFO'), gl:ev('generate_lead') };
+  }
   function avisoDesde(){
     return tocaAntes() ? '<div class="note"><strong>Este embudo cuenta desde el ' + FECHA_MEDICION +
       '.</strong> Es el día desde el que se mide bien la consulta confirmada. Antes de esa fecha ' +
@@ -671,17 +685,22 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
 
     var invM = invMeta(), invMS = invMetaSitio(), invT = inv + invMS;
 
-    var pLeads = prev ? evento('generate_lead', prev) : null;
+    // Consultas y todo lo que se calcula con ellas se compara sólo contra meses
+    // en que ya se medían (desde el 31-ago). Sesiones e inversión, siempre.
+    var prevC = comparable(prev, MEDICION_DESDE) ? prev : null;
+    var pLeads = prevC ? evento('generate_lead', prevC) : null;
     var pSes   = prev ? sumar('dias','sesiones',null,prev) : null;
     var pInv   = prev ? sumar('google_ads','costo',null,prev) : null;
     var pInvM  = prev ? invMeta(prev) : null;
     var pPagos = null, pCpl = null, pInvT = null, pCpi = null;
     if(prev){
-      var lcp = porClave('canales_leads','canal','leads',null,prev);
-      pPagos = Object.keys(lcp).reduce(function(s,c){ return esPago(c) ? s+lcp[c] : s; }, 0);
       pInvT = pInv + invMetaSitio(prev);
-      pCpl = pPagos ? pInvT/pPagos : null;
       pCpi = inscPagos(prev) ? pInvT/inscPagos(prev) : null;
+    }
+    if(prevC){
+      var lcp = porClave('canales_leads','canal','leads',null,prevC);
+      pPagos = Object.keys(lcp).reduce(function(s,c){ return esPago(c) ? s+lcp[c] : s; }, 0);
+      pCpl = pPagos ? pInvT/pPagos : null;
     }
 
     var etq = mes==='todo'
@@ -689,7 +708,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       : MESN[Number(mes.slice(5,7))] + ' ' + mes.slice(0,4);
 
     var libres = leads - pagos;
-    var pLibres = prev ? (pLeads - pPagos) : null;
+    var pLibres = prevC ? (pLeads - pPagos) : null;
 
     $('k1').innerHTML =
       tarjeta('hero','Consultas — '+etq, n(leads), 'formulario enviado y confirmado',
@@ -1229,18 +1248,35 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       return desdeMedicion(filtrar('eventos', m)).reduce(function(t,r){
         return r.evento===nombre ? t + (Number(r.n)||0) : t; }, 0); };
     var fs = abiertas(), si = ev('SENDINFO'), gl = ev('generate_lead');
-    var pFs = prev?abiertas(prev):null, pGl = prev?ev('generate_lead',prev):null;
+    // Comparaciones: consultas y envíos contra meses desde septiembre; aperturas
+    // recién contra meses desde octubre, porque septiembre las tiene incompletas.
+    var prevC = comparable(prev, MEDICION_DESDE) ? prev : null;
+    var prevA = comparable(prev, APERTURAS_DESDE) ? prev : null;
+    var pFs = prevA?abiertas(prevA):null, pGl = prevC?ev('generate_lead',prevC):null;
+
+    // "Abren y no terminan" y "% de los que abrieron" sólo se calculan con días
+    // en que las aperturas están completas (desde el 22-sep). Antes, la página de
+    // consultas tenía consultas sin su apertura y el cociente daba 0% o negativo.
+    var vc = ventanaCompleta();
+    var okAb = vc.fs > 0 && vc.gl <= vc.fs;
+    var pVc = null;
+    if(prevA){ var mesGuardado = mes; mes = prevA; pVc = ventanaCompleta(); mes = mesGuardado; }
+    var sinVentana = 'se mide desde el 22 de septiembre';
 
     $('k3').innerHTML =
-      // Si hay más consultas que aperturas medidas, el cociente no dice nada:
-      // faltan aperturas por contar (la página de consultas antes del 22-sep).
-      tarjeta('hero','Abren y no terminan', (fs && gl<=fs)?nf1.format((1-gl/fs)*100)+'%':'—',
-              (fs && gl<=fs) ? n(fs-gl)+' empezaron a escribirnos y se fueron'
-                             : 'hay más consultas que aperturas medidas en este período',
-              (prev&&pFs&&gl<=fs&&pGl<=pFs)?bloqueDelta((1-gl/fs)*100,(1-pGl/pFs)*100,'inverso'):'') +
-      tarjeta('','Abrieron', n(fs), 'con el formulario identificado', bloqueDelta(fs,pFs,'normal')) +
-      tarjeta('','Apretaron enviar', n(si), fs?pc(si/fs*100)+' de los que abrieron':'—',
-              bloqueDelta(si, prev?ev('SENDINFO',prev):null,'normal')) +
+      tarjeta('hero','Abren y no terminan', okAb ? nf1.format((1-vc.gl/vc.fs)*100)+'%' : '—',
+              okAb ? n(vc.fs-vc.gl)+' empezaron a escribirnos y se fueron' +
+                     (aperturasIncompletas() ? ' · contado desde el 22-sep' : '')
+                   : sinVentana,
+              (okAb && pVc && pVc.fs && pVc.gl<=pVc.fs)
+                ? bloqueDelta((1-vc.gl/vc.fs)*100,(1-pVc.gl/pVc.fs)*100,'inverso') : '') +
+      tarjeta('','Abrieron', n(fs),
+              aperturasIncompletas() ? 'incompleto antes del 22-sep' : 'con el formulario identificado',
+              bloqueDelta(fs,pFs,'normal')) +
+      tarjeta('','Apretaron enviar', n(si),
+              (vc.fs && vc.si<=vc.fs) ? pc(vc.si/vc.fs*100)+' de los que abrieron' +
+                (aperturasIncompletas() ? ' · desde el 22-sep' : '') : sinVentana,
+              bloqueDelta(si, prevC?ev('SENDINFO',prevC):null,'normal')) +
       tarjeta('','Consultas', n(gl), si?pc(gl/si*100)+' de los que enviaron':'—',
               bloqueDelta(gl,pGl,'normal')) +
       (inscOk() ? tarjeta('','Inscriptos', n(inscriptos()),
