@@ -517,6 +517,26 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       return r.evento===nom ? t+(Number(r.n)||0) : t; },0); };
     return { fs:fs, si:ev('SENDINFO'), gl:ev('generate_lead') };
   }
+  /** Un evento del período separado por formulario: {popup_carrera:n, ...}.
+   *  Sólo los dos formularios conocidos, igual que "Abrieron". */
+  function porForm(evento, m){
+    var o = {};
+    desdeMedicion(filtrar('formularios', m)).forEach(function(r){
+      if(r.evento !== evento) return;
+      if(FORMS_CONOCIDOS.indexOf(r.form_name) < 0) return;
+      o[r.form_name] = (o[r.form_name]||0) + (Number(r.n)||0);
+    });
+    return o;
+  }
+  var CORTO_FORM = { popup_carrera:'popup de carreras',
+                     pagina_consultas:'página de consultas' };
+  /** "49 popup de carreras · 31 página de consultas" */
+  function detalleForm(o){
+    var k = Object.keys(o).filter(function(x){ return o[x] > 0; });
+    if(!k.length) return '';
+    return k.sort(function(a,b){ return o[b]-o[a]; }).map(function(x){
+      return n(o[x]) + ' ' + (CORTO_FORM[x]||x); }).join(' · ');
+  }
   function avisoDesde(){
     return tocaAntes() ? '<div class="note"><strong>Este embudo cuenta desde el ' + FECHA_MEDICION +
       '.</strong> Es el día desde el que se mide bien la consulta confirmada. Antes de esa fecha ' +
@@ -1271,7 +1291,8 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
               (okAb && pVc && pVc.fs && pVc.gl<=pVc.fs)
                 ? bloqueDelta((1-vc.gl/vc.fs)*100,(1-pVc.gl/pVc.fs)*100,'inverso') : '') +
       tarjeta('','Abrieron', n(fs),
-              aperturasIncompletas() ? 'incompleto antes del 22-sep' : 'con el formulario identificado',
+              (detalleForm(porForm('form_start')) || 'con el formulario identificado') +
+                (aperturasIncompletas() ? ' · incompleto antes del 22-sep' : ''),
               bloqueDelta(fs,pFs,'normal')) +
       tarjeta('','Apretaron enviar', n(si),
               (vc.fs && vc.si<=vc.fs) ? pc(vc.si/vc.fs*100)+' de los que abrieron' +
