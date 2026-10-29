@@ -1024,24 +1024,15 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     // los demás no cambian de color. "Otros" siempre último y en gris.
     var orden = Object.keys(COLOR_EMBUDO).filter(function(c){ return propios.indexOf(c) >= 0; });
 
-    // Los inscriptos entran al embudo por la columna "equivale" de la hoja de
-    // Google: ahí cada origen cargado ya está traducido al canal que mide
-    // Analytics, y es lo único que permite ponerlos en la misma fila que los
-    // demás pasos. Lo que no traduce a un canal conocido va a "Otros", no se
-    // tira: un inscripto sin origen sigue siendo un inscripto.
-    var ins = null, insTot = 0;
-    if(inscOk()){
-      var fi = filtrar('inscriptos');
-      if(fi.length){
-        ins = {};
-        fi.forEach(function(r){
-          var v = Number(r.cantidad)||0;
-          var k = COLOR_EMBUDO[r.equivale] ? r.equivale : 'Otros';
-          ins[k] = (ins[k]||0) + v;
-          insTot += v;
-        });
-      }
-    }
+    // El último paso va entero, sin partir por canal, y es a propósito. Los
+    // cuatro primeros usan los nombres de canal de Analytics; los inscriptos
+    // vienen de la hoja, donde el canal se arma con el UTM y se llama de otra
+    // manera — "Orgánico" de la hoja, por ejemplo, junta buscador, directo y
+    // referidos. Pintarlos con la misma paleta daría a entender una
+    // correspondencia que no existe. La mezcla por canal de este paso está
+    // completa en la tabla de abajo del resumen.
+    var insTot = inscOk() ? inscriptos() : 0;
+    var ins = insTot > 0 ? { 'Se inscribieron': insTot } : null;
 
     var pasos = [
       { nom:'Entraron al sitio',        dato:ses,                 pie:'sesiones' },
@@ -1065,10 +1056,12 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       // paso de inscriptos, los orígenes que no se pudieron traducir a un canal.
       var vOtros = otros.reduce(function(s,c){ return s+(p.dato[c]||0); },0) +
                    (p.dato['Otros']||0);
-      var seg = orden.map(function(c){
-          return { nom:c, v:p.dato[c]||0, color:'var('+COLOR_EMBUDO[c]+')' }; })
-        .concat(vOtros > 0 ? [{ nom:'Otros', color:GRIS_OTROS, v:vOtros }] : [])
-        .filter(function(s){ return s.v > 0; });
+      var seg = p.cohorte
+        ? [{ nom:'Se inscribieron', v:t, color:'var(--marca)' }]
+        : orden.map(function(c){
+            return { nom:c, v:p.dato[c]||0, color:'var('+COLOR_EMBUDO[c]+')' }; })
+          .concat(vOtros > 0 ? [{ nom:'Otros', color:GRIS_OTROS, v:vOtros }] : [])
+          .filter(function(s){ return s.v > 0; });
 
       // La forma de embudo no la da la escala, la da la caja: el primer paso
       // ocupa todo el ancho y el último el 40%, repartido parejo entre medio.
@@ -1124,15 +1117,11 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     // Un canal puede tener inscriptos y ninguna sesión en el mes elegido — es
     // justamente el caso normal, porque la consulta fue antes. Esas filas entran
     // igual: sacarlas escondería inscriptos reales.
-    var clavesTabla = canales.slice();
-    if(ins) Object.keys(ins).forEach(function(c){
-      if(c !== 'Otros' && clavesTabla.indexOf(c) < 0) clavesTabla.push(c); });
-
-    var tabla = clavesTabla.map(function(c){
-      var s = ses[c]||0, l = paso.generate_lead[c]||0, ic = ins ? (ins[c]||0) : 0;
-      return { c:c, s:s, f:paso.form_start[c]||0, e:paso.SENDINFO[c]||0, l:l, i:ic,
+    var tabla = canales.map(function(c){
+      var s = ses[c]||0, l = paso.generate_lead[c]||0;
+      return { c:c, s:s, f:paso.form_start[c]||0, e:paso.SENDINFO[c]||0, l:l,
                r:s ? l/s*100 : 0 };
-    }).filter(function(r){ return r.s > 0 || r.i > 0; })
+    }).filter(function(r){ return r.s > 0; })
       .sort(function(a,b){ return b.r-a.r || b.l-a.l; });
     var mejorR = tabla.length ? tabla[0].r : 0;
     /** Número y, debajo, cuánto pesa dentro de ese paso. */
@@ -1147,24 +1136,23 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       'y las barras no están a escala entre sí: el ancho sirve para comparar la mezcla, no el ' +
       'volumen. El canal que se agranda al bajar es el que mejor convierte. Qué cuenta cada ' +
       'paso, explicado sin tecnicismos: al pie de <em>Embudo del formulario</em>.' +
-      (ins ? ' Los cuatro primeros pasos los mide Analytics; los inscriptos salen de la hoja ' +
-             'de Google.' : '')+'</p></div>' +
+      (ins ? ' Los cuatro primeros pasos los mide Analytics y van partidos por canal; el ' +
+             'último sale de la hoja de la universidad y va entero, porque ahí el canal se ' +
+             'llama de otra manera. Esa apertura está en la tabla de abajo.' : '')+'</p></div>' +
       '<div class="legend">'+leyenda+'</div></header>' +
       avisoDesde() +
       '<div class="embudom">'+filas+'</div>' +
       '<div class="tw" style="margin-top:18px"><table><thead><tr><th>Canal</th>' +
       '<th>Entraron</th><th>Abrieron</th><th>Apretaron enviar</th><th>Consultas</th>' +
-      (ins ? '<th>Inscriptos</th>' : '') +
       '<th>Entraron → consulta</th></tr></thead><tbody>' +
       tabla.map(function(r){
         return '<tr><td>'+r.c+(esPago(r.c)?' <span class="sub">pago</span>':'')+'</td>' +
           celda(r.s,tSes) + celda(r.f,tFs) + celda(r.e,tSi) + celda(r.l,tGl) +
-          (ins ? celda(r.i,tIns) : '') +
           '<td>'+pc(r.r)+'<div class="bartrack"><span class="bar" style="width:'+
           (mejorR?Math.min(r.r/mejorR*100,100):0).toFixed(1)+'%"></span></div></td></tr>';
       }).join('') + '</tbody>' +
       '<tfoot><tr><td>Total</td><td>'+n(tSes)+'</td><td>'+n(tFs)+'</td><td>'+n(tSi)+
-      '</td><td>'+n(tGl)+'</td>' + (ins ? '<td>'+n(tIns)+'</td>' : '') +
+      '</td><td>'+n(tGl)+'</td>' +
       '<td>'+(tSes?pc(tGl/tSes*100):'—')+'</td></tr></tfoot>' +
       '</table></div>' +
       avisoSesiones(tSes) +
@@ -1220,8 +1208,10 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       var insc = {}, sueltos = {};
       var nomGa4 = lista.map(function(c){ return c.carrera; })
         .sort(function(a,b){ return clave(b).length - clave(a).length; });
-      filtrar('inscriptos').forEach(function(r){
-        var k = clave(r.carrera), v = Number(r.cantidad)||0, quien = null;
+      filtrar('consultas_crm').forEach(function(r){
+        var v = Number(r.inscriptos)||0;
+        if(!v) return;                       // sin inscriptos no hay nada que emparejar
+        var k = clave(r.carrera), quien = null;
         for(var i=0;i<nomGa4.length;i++){
           var g = clave(nomGa4[i]);
           if(g && k && (k.indexOf(g) >= 0 || g.indexOf(k) >= 0)){ quien = nomGa4[i]; break; }
