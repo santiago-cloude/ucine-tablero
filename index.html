@@ -210,7 +210,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
   border-radius:9px;padding:13px 15px;font-size:12.5px;color:var(--ink-2);max-width:90ch}
 .note strong{color:var(--ink);font-weight:700}
 /* Glosario del embudo: qué cuenta cada paso, en palabras de quien no mide. */
-.glosario{margin-top:18px;border-top:1px solid var(--hair);padding-top:14px}
+.glosario{margin-top:14px;box-shadow:none;background:var(--surface-2)}
 .glosario h3{font-size:13px;font-weight:700;color:var(--ink);margin:0 0 10px}
 .glosario dl{display:grid;grid-template-columns:170px minmax(0,1fr);gap:9px 18px;margin:0}
 .glosario dt{font-size:12.5px;font-weight:600;color:var(--ink)}
@@ -321,6 +321,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       <p>De la curiosidad al formulario enviado, carrera por carrera.</p></div>
     <div id="p2-cuerpo"></div>
     <div id="p2-paginas"></div>
+    <div id="p2-comoleer"></div>
   </section>
 
   <!-- 3 -->
@@ -332,7 +333,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     <div class="card"><header><h2>El embudo completo</h2></header>
       <div class="funnel" id="f-total"></div>
       <div id="f-total-nota"></div>
-      <div class="glosario"><h3>Qué cuenta cada paso</h3><dl>
+      <details class="comoleer glosario"><summary>Qué cuenta cada paso <span>— explicado sin tecnicismos</span></summary><div class="cuerpo"><dl>
         <dt>Abrieron</dt>
         <dd>La persona empezó a mirar el formulario. En las páginas de carrera, cuando toca
           <strong>“+ INFO”</strong> y se abre el recuadro naranja. En la página de consultas,
@@ -353,9 +354,10 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       <p class="hint" style="margin-top:12px">En la página de consultas, “Abrieron” y
         “Apretaron enviar” se empezaron a medir con el ajuste de septiembre de 2026. Los meses
         anteriores muestran pocas aperturas y porcentajes que no cierran: no es que la gente no
-        abría el formulario, es que no se estaba contando.</p></div></div>
+        abría el formulario, es que no se estaba contando.</p></div></details></div>
     <div id="p3-origen"></div>
     <div id="p3-form"></div>
+    <div id="p3-comoleer"></div>
   </section>
 
   <!-- 4 -->
@@ -370,11 +372,9 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       <div class="tw"><table>
         <thead><tr><th>Canal</th><th>Dónde se hace el clic</th><th>Clics</th><th>Participación</th></tr></thead>
         <tbody id="t-cont"></tbody></table></div>
-      <div class="note">Las ubicaciones salen del nombre de cada etiqueta en el gestor de
-        etiquetas. Si alguna se movió de lugar en el sitio, hay que corregirla acá también:
-        el tablero no puede darse cuenta solo.</div>
     </div>
     <div id="p4-deriva"></div>
+    <div id="p4-comoleer"></div>
   </section>
 
   <!-- 5 -->
@@ -384,6 +384,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
          propia API, con sus propios números.</p></div>
     <div id="p5-cuerpo"></div>
     <div id="p5-meta"></div>
+    <div id="p5-comoleer"></div>
   </section>
 
   <!-- 6 -->
@@ -476,6 +477,16 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
      poder quedar en una pantalla sin un párrafo entre cada dato. */
   var NOTAS = [];
   function nota(html){ if(html) NOTAS.push(html); }
+  /** Vuelca las notas juntadas en el bloque plegado de esa página y vacía la lista. */
+  function comoleer(id){
+    var c = $(id);
+    if(c) c.innerHTML = NOTAS.length
+      ? '<details class="comoleer"><summary>Cómo leer esto ' +
+        '<span>— de dónde sale cada número y qué no se puede comparar</span></summary>' +
+        '<div class="cuerpo">' + NOTAS.join('') + '</div></details>'
+      : '';
+    NOTAS = [];
+  }
 
   /* ── filtros ── */
   function enMes(f, m){ m = m || mes; return m === 'todo' || String(f).slice(0,7) === m; }
@@ -914,11 +925,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
 
     // Todas las aclaraciones juntas y plegadas al pie. Se escriben igual de
     // completas que antes: lo que cambia es que no interrumpen la lectura.
-    $('p1-comoleer').innerHTML = NOTAS.length
-      ? '<details class="comoleer"><summary>Cómo leer esto ' +
-        '<span>— de dónde sale cada número y qué no se puede comparar</span></summary>' +
-        '<div class="cuerpo">' + NOTAS.join('') + '</div></details>'
-      : '';
+    comoleer('p1-comoleer');
   }
 
   /* ══ El embudo madre ═══════════════════════════════════════════════════
@@ -1239,6 +1246,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
 
   /* ── 2 ── */
   function p2(){
+    NOTAS = [];
     var filas = filtrar('carreras');
     if(!filas.length){ $('p2-cuerpo').innerHTML = vacio('Sin datos de carrera',
       'El informe no devolvió filas. Suele ser porque el parámetro <code>carrera</code> todavía ' +
@@ -1318,19 +1326,23 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
           (c.select?pc(c.lead/c.select*100):'—')+'<div class="bartrack"><span class="bar" style="width:'+
           (ref/max*100).toFixed(1)+'%"></span></div></td></tr>';
       }).join('') + '</tbody></table></div>' +
-      '<p class="hint">La barra es el volumen; el porcentaje, cuántos de los que hicieron clic ' +
-      'terminan en consulta. Una carrera con barra larga y porcentaje bajo trae curiosidad, ' +
-      'no interés.</p>' +
-      '<div class="note"><strong>Las consultas de esta página incluyen los dos formularios.</strong> ' +
-      'El valor sale del parámetro <code>carrera</code> del evento de consulta, venga del popup ' +
-      'de la carrera o de la página de consultas. El desglose por formulario está en la página 3.</div>' +
-      (hayInsc ? '<div class="note"><strong>Esta tabla no lleva inscriptos, y no es una ' +
-        'omisión.</strong> Las consultas de acá las cuenta Analytics por la carrera que la ' +
-        'persona eligió en el formulario; los inscriptos salen de la hoja de la universidad. ' +
-        'Son dos fuentes y dos maneras de contar, así que ponerlas en la misma fila invitaría ' +
-        'a dividir una por otra. El paso de consulta a inscripto está en el resumen, por canal, ' +
-        'donde las dos puntas salen de la misma fila.</div>' : '') +
       '</div>';
+
+    nota('<div class="note"><strong>Cómo se lee la tabla.</strong> La barra es el volumen; el ' +
+      'porcentaje, cuántos de los que hicieron clic terminan en consulta. Una carrera con ' +
+      'barra larga y porcentaje bajo trae curiosidad, no interés.</div>');
+    nota('<div class="note"><strong>Las consultas de esta página incluyen los dos ' +
+      'formularios.</strong> El valor sale del parámetro <code>carrera</code> del evento de ' +
+      'consulta, venga del popup de la carrera o de la página de consultas. El desglose por ' +
+      'formulario está en <em>Embudo del formulario</em>.</div>');
+    if(hayInsc){
+      nota('<div class="note"><strong>Esta tabla no lleva el porcentaje de inscriptos, y no ' +
+        'es una omisión.</strong> Las consultas de acá las cuenta Analytics por la carrera que ' +
+        'la persona eligió en el formulario; los inscriptos salen de la hoja de la ' +
+        'universidad. Son dos fuentes y dos maneras de contar, así que dividir una por otra ' +
+        'daría un número que no describe nada. El paso de consulta a inscripto está en el ' +
+        'resumen, por canal, donde las dos puntas salen de la misma fila.</div>');
+    }
 
     $('p2-paginas').innerHTML = vistas.sueltas.length
       ? '<div class="card"><header><div><h2>Páginas de carrera que no pude emparejar</h2>' +
@@ -1342,6 +1354,8 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
           return '<tr><td class="sub" style="text-align:left"><code>'+p.ruta+'</code></td><td>'+n(p.vistas)+'</td></tr>';
         }).join('') + '</tbody></table></div></div>'
       : '';
+
+    comoleer('p2-comoleer');
   }
 
   function lista_nombres(m){
@@ -1374,6 +1388,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
 
   /* ── 3 ── */
   function p3(){
+    NOTAS = [];
     if(todoAntes()){
       var aviso = vacio('El embudo empieza el ' + FECHA_MEDICION,
         'En este mes todavía no se medía la consulta confirmada, así que no hay embudo que armar.');
@@ -1439,14 +1454,16 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     var pasosT = [['Abrieron',fs,marcaAp],['Apretaron enviar',si],['Consulta confirmada',gl]];
     if(inscOk() && inscriptos() > 0) pasosT.push(['Se inscribieron', inscriptos(), 'otra-fuente']);
     embudo('f-total', pasosT);
-    $('f-total-nota').innerHTML = avisoDesde() + ((inscOk() && inscriptos() > 0)
-      ? '<div class="note"><strong>Los tres primeros pasos y el último no se miden igual, pero ' +
-        'cuentan a la misma gente.</strong> Abrieron, apretaron enviar y consulta confirmada ' +
-        'son eventos que Analytics mide en el sitio. Los inscriptos salen de la hoja de ' +
-        'cálculo de la universidad y se cuentan en el mes en que esa persona consultó, así que ' +
-        'el último escalón sí es una tasa. Lo único que le falta es tiempo: los meses más ' +
-        'nuevos siguen sumando inscriptos.</div>'
-      : '');
+    $('f-total-nota').innerHTML = '';
+    nota(avisoDesde());
+    if(inscOk() && inscriptos() > 0){
+      nota('<div class="note"><strong>Los tres primeros pasos y el último no se miden igual, ' +
+        'pero cuentan a la misma gente.</strong> Abrieron, apretaron enviar y consulta ' +
+        'confirmada son eventos que Analytics mide en el sitio. Los inscriptos salen de la ' +
+        'hoja de cálculo de la universidad y se cuentan en el mes en que esa persona ' +
+        'consultó, así que el último escalón sí es una tasa. Lo único que le falta es tiempo: ' +
+        'los meses más nuevos siguen sumando inscriptos.</div>');
+    }
 
     // Embudo separado por origen, cuando el informe por canal está disponible.
     var ce = desdeMedicion(filtrar('canales_embudo')).filter(aperturaPropia);
@@ -1493,6 +1510,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
         'El parámetro <code>form_name</code> llega vacío. Es el pendiente con el desarrollador. ' +
         'Cuando se arregle, el desglose arranca ese día: las dimensiones personalizadas de ' +
         'Analytics no rellenan hacia atrás.');
+      comoleer('p3-comoleer');
       return;
     }
     // Sólo se dibujan los dos formularios que existen en el sitio. Cualquier otro
@@ -1510,6 +1528,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     if(!conNombre.length){
       $('p3-form').innerHTML = vacio('Sin datos de los dos formularios en este período',
         'Llegaron envíos, pero ninguno con el nombre de un formulario del sitio.');
+      comoleer('p3-comoleer');
       return;
     }
     var m = {};
@@ -1533,26 +1552,32 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
         (DONDE_FORM[k]?'<p class="hint">'+DONDE_FORM[k]+'</p>':'') + '</div>' +
         '<span class="pill">'+n(m[k].gl)+' consultas</span></header>' +
         '<div class="funnel" id="f-'+i+'"></div></div>';
-    }).join('') + '</div>' +
-    (roto.length ? '<div class="card"><div class="note"><strong>El desglose por formulario ' +
-      'no cierra en los días anteriores al 22 de septiembre.</strong> El clic en ENVIAR ' +
-      '(<code>SENDINFO</code>) no llevaba el parámetro <code>form_name</code>, así que ese paso ' +
-      'aparece vacío en los dos. Y en la página de consultas tampoco se disparaba ' +
-      '<code>form_start</code> al abrir, por eso hay más consultas que aperturas. ' +
-      '<strong>Los dos se corrigieron en Tag Manager el 21 de septiembre de 2026</strong>: desde el 22 ' +
-      'esos pasos se llenan solos. Lo anterior queda así, porque Analytics no completa hacia ' +
-      'atrás. Para los días previos, lo confiable de esta sección es la última fila — cuántas ' +
-      'consultas salió de cada formulario.</div></div>' : '') +
-    (Object.keys(raros).length ? '<div class="card"><div class="note"><strong>Quedaron afuera ' +
-      'envíos con un nombre de formulario que no existe en el sitio:</strong> ' +
-      Object.keys(raros).map(function(k){ return '<code>'+k+'</code> ('+n(raros[k])+' consultas)'; }).join(', ') +
-      '. Parecen pruebas técnicas. Sí están contadas en el embudo completo de arriba.</div></div>' : '');
+    }).join('') + '</div>';
+
+    if(roto.length){
+      nota('<div class="note"><strong>El desglose por formulario ' +
+        'no cierra en los días anteriores al 22 de septiembre.</strong> El clic en ENVIAR ' +
+        '(<code>SENDINFO</code>) no llevaba el parámetro <code>form_name</code>, así que ese ' +
+        'paso aparece vacío en los dos. Y en la página de consultas tampoco se disparaba ' +
+        '<code>form_start</code> al abrir, por eso hay más consultas que aperturas. ' +
+        '<strong>Los dos se corrigieron en Tag Manager el 21 de septiembre de 2026</strong>: ' +
+        'desde el 22 esos pasos se llenan solos. Lo anterior queda así, porque Analytics no ' +
+        'completa hacia atrás. Para los días previos, lo confiable de esta sección es la ' +
+        'última fila — cuántas consultas salió de cada formulario.</div>');
+    }
+    if(Object.keys(raros).length){
+      nota('<div class="note"><strong>Quedaron afuera envíos con un nombre de formulario que ' +
+        'no existe en el sitio:</strong> ' +
+        Object.keys(raros).map(function(k){ return '<code>'+k+'</code> ('+n(raros[k])+' consultas)'; }).join(', ') +
+        '. Parecen pruebas técnicas. Sí están contadas en el embudo completo de arriba.</div>');
+    }
 
     Object.keys(m).forEach(function(k,i){
       embudo('f-'+i, [['Abrieron',m[k].fs,
         (k==='pagina_consultas' && aperturasIncompletas()) ? 'incompleto' : undefined],
         ['Apretaron enviar',m[k].si],['Consulta confirmada',m[k].gl]]);
     });
+    comoleer('p3-comoleer');
   }
 
   /**
@@ -1611,6 +1636,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
 
   /* ── 4 ── */
   function p4(){
+    NOTAS = [];
     var vals = CONTACTO.map(function(c){ return [c[1], evento(c[0]), c[2], c[3]]; })
                        .filter(function(c){ return c[1] > 0; });
     var total = vals.reduce(function(s,c){ return s+c[1]; }, 0);
@@ -1621,6 +1647,9 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
         '<td>'+n(c[1])+'</td><td>'+(total?pc(c[1]/total*100):'—')+'</td></tr>';
     }).join('');
     D._contacto = vals;
+    nota('<div class="note">Las ubicaciones de la tabla salen del nombre de cada etiqueta en ' +
+      'el gestor de etiquetas. Si alguna se movió de lugar en el sitio, hay que corregirla ' +
+      'ahí también: el tablero no puede darse cuenta solo.</div>');
     p4deriva();
   }
 
@@ -1664,6 +1693,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     if(!(D.utm_sesiones||[]).length){
       caja.innerHTML = vacio('Derivaciones sin datos todavía',
         'El informe de UTM no devolvió filas. Si acabás de agregarlo, corré <code>actualizar</code> una vez más.');
+      comoleer('p4-comoleer');
       return;
     }
     var s = {}, l = {};
@@ -1683,6 +1713,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       caja.innerHTML = vacio('Ninguna sesión con los UTM de derivación',
         'Analytics no vio todavía visitas con <code>wapp_…</code> ni <code>bio_ig…</code> en el período elegido. ' +
         'Si los links recién se pusieron en circulación, es lo esperado: las sesiones aparecen desde ese día.');
+      comoleer('p4-comoleer');
       return;
     }
     var ses = claves.reduce(function(t,k){ return t+s[k]; },0);
@@ -1701,10 +1732,6 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       'y terminaron en el formulario.</p></div>' +
       '<span class="pill">' + n(lds) + ' consultas · ' + n(ses) + ' sesiones' +
       (insWa ? ' · ' + n(insWa) + ' inscriptos' : '') + '</span></header>' +
-      (insWa ? '<div class="note"><strong>' + n(insWa) + ' de los inscriptos del período ' +
-        'llegaron por una derivación del equipo</strong>, según la hoja de cálculo. Ese número ' +
-        'no se puede abrir por persona: la hoja guarda el canal, no quién mandó el link. ' +
-        'La tabla de abajo sí muestra quién deriva, pero hasta la consulta.</div>' : '') +
       '<div class="tw"><table><thead><tr><th>Origen</th><th>Quién deriva</th><th>A dónde</th>' +
       '<th>Sesiones</th><th>Consultas</th><th>Conversión</th></tr></thead><tbody>' +
       claves.map(function(k){
@@ -1713,16 +1740,24 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
           '</td><td>'+n(lv)+'</td><td>'+(sv?pc(lv/sv*100):'—')+'</td></tr>';
       }).join('') +
       '</tbody><tfoot><tr><td>Total</td><td></td><td></td><td>'+n(ses)+'</td><td>'+n(lds)+
-      '</td><td>'+(ses?pc(lds/ses*100):'—')+'</td></tr></tfoot></table></div>' +
-      '<div class="note"><strong>Estas consultas cuentan como "Sin publicidad".</strong> ' +
+      '</td><td>'+(ses?pc(lds/ses*100):'—')+'</td></tr></tfoot></table></div></div>';
+
+    if(insWa){
+      nota('<div class="note"><strong>' + n(insWa) + ' de los inscriptos del período ' +
+        'llegaron por una derivación del equipo</strong>, según la hoja de cálculo. Ese número ' +
+        'no se puede abrir por persona: la hoja guarda el canal, no quién mandó el link. ' +
+        'La tabla sí muestra quién deriva, pero hasta la consulta.</div>');
+    }
+    nota('<div class="note"><strong>Estas consultas cuentan como "Sin publicidad".</strong> ' +
       'Y está bien que así sea: no se puede probar que la conversación haya empezado en un ' +
       'aviso pago — pudo venir de la bio, del botón de WhatsApp del sitio o de un conocido. ' +
       'Por eso no se le acreditan a Meta. Este bloque es el lugar donde ese tráfico se ve ' +
-      'aparte, con nombre y apellido de quién lo derivó.</div></div>';
+      'aparte, con nombre y apellido de quién lo derivó.</div>');
+    comoleer('p4-comoleer');
   }
 
   /* ── 5 ── */
-  function p5(){ p5google(); p5meta(); }
+  function p5(){ NOTAS = []; p5google(); p5meta(); comoleer('p5-comoleer'); }
 
   function p5google(){
     var filas = filtrar('google_ads');
@@ -1770,12 +1805,6 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       tarjeta('','Clics de marca', clics?Math.round(marca/clics*100)+'%':'—',
               'gente que ya buscaba UCINE por nombre') +
       '</div>' +
-      (inscOk() && insG ? '<div class="card"><div class="note"><strong>El costo por inscripto ' +
-        'de arriba sí es de la cohorte.</strong> Esos inscriptos consultaron dentro del ' +
-        'período, así que la inversión del período es la que los trajo. Con una salvedad: los ' +
-        'meses recién cerrados todavía suman inscriptos, así que su costo arranca alto y baja ' +
-        'con el tiempo. Un mes viejo y uno nuevo no se comparan de igual a igual.' +
-        '</div></div>' : '') +
       '<div class="card"><header><div><h2>Campaña por campaña</h2>' +
       '<p class="hint">Marca y no-marca se clasifican por ID de campaña, no por el nombre: si ' +
       'alguien renombra la campaña, el tablero sigue funcionando.</p></div></header>' +
@@ -1787,11 +1816,19 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
           (c.clics?money(c.costo/c.clics):'—')+'</td></tr>';
       }).join('') + '</tbody><tfoot><tr><td>Total</td><td></td><td>'+n(impr)+'</td><td>'+
       n(clics)+'</td><td>'+money(inv)+'</td><td>'+(clics?money(inv/clics):'—')+
-      '</td></tr></tfoot></table></div>' +
-      '<div class="note"><strong>El costo por consulta no se puede abrir por campaña.</strong> ' +
-      'Analytics no permite pedir el costo y los eventos en el mismo informe, así que la ' +
-      'inversión llega por campaña y las consultas por canal. Para el detalle por campaña ' +
-      'hace falta la API de Google Ads.</div></div>';
+      '</td></tr></tfoot></table></div></div>';
+
+    if(inscOk() && insG){
+      nota('<div class="note"><strong>El costo por inscripto de Google sí es de la ' +
+        'cohorte.</strong> Esos inscriptos consultaron dentro del período, así que la ' +
+        'inversión del período es la que los trajo. Con una salvedad: los meses recién ' +
+        'cerrados todavía suman inscriptos, así que su costo arranca alto y baja con el ' +
+        'tiempo. Un mes viejo y uno nuevo no se comparan de igual a igual.</div>');
+    }
+    nota('<div class="note"><strong>El costo por consulta no se puede abrir por ' +
+      'campaña.</strong> Analytics no permite pedir el costo y los eventos en el mismo ' +
+      'informe, así que la inversión llega por campaña y las consultas por canal. Para el ' +
+      'detalle por campaña hace falta la API de Google Ads.</div>');
   }
 
   /* Meta. Cuenta compartida con FUCLAB: entran sólo las campañas cuyo nombre
@@ -1868,16 +1905,18 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       }).join('') +
       '</tbody><tfoot><tr><td>Total</td><td></td><td>'+n(impr)+'</td><td>'+n(enlace)+'</td><td>'+
       money(inv)+'</td><td>'+n(convo)+'</td><td>'+n(leads)+
-      '</td></tr></tfoot></table></div>' +
-      '<div class="note"><strong>Una conversación iniciada no es una consulta.</strong> ' +
+      '</td></tr></tfoot></table></div></div>';
+
+    nota('<div class="note"><strong>Una conversación iniciada no es una consulta.</strong> ' +
       'Las campañas de mensajes no mandan a nadie al sitio: producen gente que abre el chat. ' +
       'Esa columna no se suma nunca a las consultas del formulario, y no se renombra a "leads" ' +
       '— el nombre es lo único que impide que alguien las sume. El puente entre las dos cosas ' +
-      'está en la página 4: cuando el equipo manda desde el chat un link con UTM, esa visita ' +
-      'sí aparece en Analytics.</div>' +
-      (fuera.length ? '<div class="note">Campañas de la cuenta que quedaron afuera por no decir ' +
-        '<code>' + (D.meta_filtro||'') + '</code>: ' + fuera.join(' · ') + '</div>' : '') +
-      '</div>';
+      'está en <em>Canales de contacto</em>: cuando el equipo manda desde el chat un link con ' +
+      'UTM, esa visita sí aparece en Analytics.</div>');
+    if(fuera.length){
+      nota('<div class="note">Campañas de la cuenta que quedaron afuera por no decir ' +
+        '<code>' + (D.meta_filtro||'') + '</code>: ' + fuera.join(' · ') + '</div>');
+    }
   }
 
   function objetivoMeta(o){
@@ -1893,6 +1932,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
 
   /* ── 6 ── */
   function p6(){
+    NOTAS = [];
     var si = evento('SENDINFO'), gl = evento('generate_lead');
     var carreras = filtrar('carreras'), forms = filtrar('formularios');
     var ns = function(filas, campo){
