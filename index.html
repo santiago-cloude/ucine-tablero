@@ -103,7 +103,11 @@ h1,h2{margin:0}
   box-shadow:var(--sh);padding:15px 17px 16px;display:flex;flex-direction:column;gap:3px;min-width:0}
 .kpi .k{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
 .kpi .v{font-size:31px;font-weight:800;letter-spacing:-.03em;line-height:1.15;margin-top:4px}
-.kpi.hero .v{font-size:38px;color:var(--marca)}
+/* El número grande va en tinta normal. El rojo queda reservado para cuando
+   algo está mal: un indicador en rojo que en realidad es bueno hace levantar
+   la vista a cualquiera que entre a mirar el tablero de corrido. */
+.kpi.hero .v{font-size:38px}
+.kpi.hero.malo .v{color:var(--marca)}
 .kpi .d{font-size:12px;color:var(--muted);margin-top:1px}
 .kpi .deltas{display:flex;gap:14px;flex-wrap:wrap;margin-top:9px;padding-top:9px;
   border-top:1px solid var(--hair);font-size:11.5px;color:var(--muted)}
@@ -889,6 +893,17 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
    */
   var COLOR_EMBUDO = { 'Organic Search':'--c1', 'Direct':'--c2', 'Organic Social':'--c3',
                        'Referral':'--c4', 'Paid Search':'--c5', 'Paid Social':'--s-c' };
+  /* El último paso tiene su propia paleta porque tiene su propio vocabulario:
+     los cuatro primeros usan los canales de Analytics y éste los de la hoja.
+     Los colores se eligen para que se lean en continuidad — amarillo sigue
+     siendo lo pago de Google, rosa lo pago de Meta — pero los nombres no son
+     intercambiables: "Orgánico" de la hoja junta buscador, directo y referidos. */
+  var COLOR_CRM = { 'Orgánico':'--c1', 'Google Ads':'--c5', 'Meta Ads':'--s-c',
+                    'Instagram orgánico':'--c3', 'Derivación de WhatsApp':'--c4',
+                    'Email':'--c2', 'ChatGPT y asistentes':'--s-b' };
+  var TINTA_CRM = { 'Orgánico':'#fff', 'Google Ads':'#2b1d00', 'Meta Ads':'#40101f',
+                    'Instagram orgánico':'#05291c', 'Derivación de WhatsApp':'#fff',
+                    'Email':'#fff', 'ChatGPT y asistentes':'#fff' };
   var GRIS_OTROS = '#9AA3B0';
   /* Tinta del número dentro de cada segmento. No es capricho: sobre el amarillo
      y el rosa, el blanco no se lee. */
@@ -1024,15 +1039,16 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     // los demás no cambian de color. "Otros" siempre último y en gris.
     var orden = Object.keys(COLOR_EMBUDO).filter(function(c){ return propios.indexOf(c) >= 0; });
 
-    // El último paso va entero, sin partir por canal, y es a propósito. Los
-    // cuatro primeros usan los nombres de canal de Analytics; los inscriptos
-    // vienen de la hoja, donde el canal se arma con el UTM y se llama de otra
-    // manera — "Orgánico" de la hoja, por ejemplo, junta buscador, directo y
-    // referidos. Pintarlos con la misma paleta daría a entender una
-    // correspondencia que no existe. La mezcla por canal de este paso está
-    // completa en la tabla de abajo del resumen.
+    // El último paso se parte por canal como los otros, pero con los nombres y
+    // los colores de la hoja: ahí el canal sale del UTM de la consulta, no del
+    // agrupamiento de Analytics. Son dos vocabularios y conviene que se note.
     var insTot = inscOk() ? inscriptos() : 0;
-    var ins = insTot > 0 ? { 'Se inscribieron': insTot } : null;
+    var ins = null, ordenCrm = [];
+    if(insTot > 0){
+      ins = inscPorCanal();
+      Object.keys(ins).forEach(function(c){ if(!ins[c]) delete ins[c]; });
+      ordenCrm = Object.keys(ins).sort(function(a,b){ return ins[b]-ins[a]; });
+    }
 
     var pasos = [
       { nom:'Entraron al sitio',        dato:ses,                 pie:'sesiones' },
@@ -1057,7 +1073,11 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       var vOtros = otros.reduce(function(s,c){ return s+(p.dato[c]||0); },0) +
                    (p.dato['Otros']||0);
       var seg = p.cohorte
-        ? [{ nom:'Se inscribieron', v:t, color:'var(--marca)' }]
+        ? ordenCrm.map(function(c){
+            return { nom:c, v:p.dato[c]||0,
+                     color: COLOR_CRM[c] ? 'var('+COLOR_CRM[c]+')' : GRIS_OTROS,
+                     tinta: TINTA_CRM[c] || '#1e232b' }; })
+          .filter(function(s){ return s.v > 0; })
         : orden.map(function(c){
             return { nom:c, v:p.dato[c]||0, color:'var('+COLOR_EMBUDO[c]+')' }; })
           .concat(vOtros > 0 ? [{ nom:'Otros', color:GRIS_OTROS, v:vOtros }] : [])
@@ -1099,7 +1119,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
             // nombre se cortaría por la mitad.
             else if(q * ancho / 100 >= 15) etq = s.nom + ' · ' + nf1.format(q) + '%';
             return '<span class="eseg" style="width:'+q.toFixed(2)+'%;background:'+s.color+
-              ';color:'+(TINTA_EMBUDO[s.nom]||'#fff')+'" title="'+s.nom+': '+n(s.v)+
+              ';color:'+(s.tinta||TINTA_EMBUDO[s.nom]||'#fff')+'" title="'+s.nom+': '+n(s.v)+
               ' · '+nf1.format(q)+'% del paso">'+etq+'</span>';
           }).join('') +
         '</div></div>';
@@ -1136,12 +1156,19 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       'y las barras no están a escala entre sí: el ancho sirve para comparar la mezcla, no el ' +
       'volumen. El canal que se agranda al bajar es el que mejor convierte. Qué cuenta cada ' +
       'paso, explicado sin tecnicismos: al pie de <em>Embudo del formulario</em>.' +
-      (ins ? ' Los cuatro primeros pasos los mide Analytics y van partidos por canal; el ' +
-             'último sale de la hoja de la universidad y va entero, porque ahí el canal se ' +
-             'llama de otra manera. Esa apertura está en la tabla de abajo.' : '')+'</p></div>' +
+      (ins ? ' Los cuatro primeros pasos los mide Analytics; el último sale de la hoja de la ' +
+             'universidad y usa sus propios nombres de canal, con su propia referencia de ' +
+             'colores debajo del embudo.' : '')+'</p></div>' +
       '<div class="legend">'+leyenda+'</div></header>' +
       avisoDesde() +
       '<div class="embudom">'+filas+'</div>' +
+      (ins ? '<div class="legend" style="margin-top:10px">' +
+        '<span class="sub" style="margin-right:4px">Se inscribieron, por el canal de su ' +
+        'consulta:</span>' +
+        ordenCrm.filter(function(c){ return ins[c] > 0; }).map(function(c){
+          return '<span><i class="swatch" style="background:' +
+            (COLOR_CRM[c] ? 'var('+COLOR_CRM[c]+')' : GRIS_OTROS) + '"></i>' + c +
+            ' · ' + n(ins[c]) + '</span>'; }).join('') + '</div>' : '') +
       '<div class="tw" style="margin-top:18px"><table><thead><tr><th>Canal</th>' +
       '<th>Entraron</th><th>Abrieron</th><th>Apretaron enviar</th><th>Consultas</th>' +
       '<th>Entraron → consulta</th></tr></thead><tbody>' +
@@ -1161,7 +1188,12 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       'y 35% al consultar, está rindiendo por encima de su tamaño. La tabla está ordenada por ' +
       'conversión, no por volumen: un canal chico arriba de todo es una pista de dónde poner ' +
       'más plata.</div>' +
-      (ins ? '<div class="note"><strong>El último paso sí se divide por el anterior.</strong> ' +
+      (ins ? '<div class="note"><strong>Los colores del último paso no son los mismos de ' +
+        'arriba.</strong> Los cuatro primeros escalones usan los canales de Analytics; el de ' +
+        'inscriptos usa los de la hoja, que salen del UTM con el que llegó la consulta. Se ' +
+        'parecen pero no son iguales: <em>Orgánico</em> ahí junta buscador, directo y ' +
+        'referidos, que arriba van separados. Por eso lleva su propia referencia.</div>' +
+        '<div class="note"><strong>El último paso sí se divide por el anterior.</strong> ' +
         'El inscripto viene de la misma fila que su consulta, así que los dos escalones hablan ' +
         'de la misma gente: de las consultas que entraron en el período elegido, ésas son las ' +
         'que terminaron anotándose. Lo que no se puede es comparar un mes recién cerrado con ' +
@@ -1341,7 +1373,10 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     var sinVentana = 'se mide desde el 22 de septiembre';
 
     $('k3').innerHTML =
-      tarjeta('hero','Abren y no terminan', okAb ? nf1.format((1-vc.gl/vc.fs)*100)+'%' : '—',
+      // El único rojo del tablero: acá el número grande es gente que se fue
+      // sin terminar, así que cuanto más alto, peor. Es el caso que el color
+      // tiene que señalar.
+      tarjeta('hero malo','Abren y no terminan', okAb ? nf1.format((1-vc.gl/vc.fs)*100)+'%' : '—',
               okAb ? n(vc.fs-vc.gl)+' empezaron a escribirnos y se fueron' +
                      (aperturasIncompletas() ? ' · contado desde el 22-sep' : '')
                    : sinVentana,
