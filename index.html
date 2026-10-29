@@ -259,6 +259,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     <div id="p1-nota"></div>
     <div id="p1-embudo"></div>
     <div id="p1-insc"></div>
+    <div id="p1-crm"></div>
     <div class="card">
       <header><div><h2>De dónde vienen las consultas</h2>
         <p class="hint">Cada consulta se atribuye al canal de la sesión en la que se envió el
@@ -318,8 +319,10 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
         <dd>El sitio recibió la consulta completa y la guardó. Es la única que cuenta como
           consulta en todo el tablero.</dd>
         <dt>Se inscribieron</dt>
-        <dd>Lo carga a mano el equipo de admisión en la hoja de cálculo. No sale del sitio,
-          y por eso se lee aparte: ver la nota de arriba.</dd>
+        <dd>De las personas que dejaron la consulta, las que terminaron anotándose. Sale de la
+          hoja de cálculo de la universidad, donde cada consulta tiene una marca de sí o no.
+          Esa marca la pone una persona, cuando la inscripción se concreta, así que los meses
+          más nuevos todavía están sumando.</dd>
       </dl>
       <p class="hint" style="margin-top:12px">En la página de consultas, “Abrieron” y
         “Apretaron enviar” se empezaron a medir con el ajuste de septiembre de 2026. Los meses
@@ -460,16 +463,80 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
   function evento(nombre, m){ return sumar('eventos','n',function(r){ return r.evento===nombre; }, m); }
   function esPago(canal){ return (D.canales_pagos||[]).indexOf(canal) >= 0; }
   function metaOk(){ return !!(D.fuentes && D.fuentes.meta && D.fuentes.meta.estado === 'ok'); }
-  function inscOk(){ return !!(D.fuentes && D.fuentes.inscriptos && D.fuentes.inscriptos.estado === 'ok'); }
-  function inscriptos(m){ return inscOk() ? sumar('inscriptos','cantidad',null,m) : 0; }
-  /** Inscriptos repartidos por el canal de Analytics al que equivale su origen.
-   *  La columna "equivale" de la hoja de cálculo es el único puente entre lo que
-   *  se carga a mano y lo que mide Analytics: sin ella los inscriptos son un
-   *  total suelto que no se puede cruzar con nada. */
+  /* Los inscriptos salen de la hoja de la universidad: la misma fila que la
+     consulta, con un sí/no de inscripción. Por eso cada inscripto suma en el
+     mes en que consultó — no en el mes en que se anotó — y el porcentaje
+     final del embudo habla de la misma gente que el primero. */
+  function inscOk(){ return !!(D.fuentes && D.fuentes.consultas && D.fuentes.consultas.estado === 'ok'); }
+  function inscriptos(m){ return inscOk() ? sumar('consultas_crm','inscriptos',null,m) : 0; }
+  function consultasCrm(m){ return inscOk() ? sumar('consultas_crm','consultas',null,m) : 0; }
+  /** Inscriptos por canal, con los nombres de canal que arma el backend a
+   *  partir del UTM con el que llegó la consulta. */
   function inscPorCanal(m){
-    return inscOk() ? porClave('inscriptos','equivale','cantidad',
-      function(r){ return !!r.equivale; }, m) : {};
+    return inscOk() ? porClave('consultas_crm','canal','inscriptos', null, m) : {};
   }
+  /* ══ Consultas e inscriptos de la hoja de la universidad ══════════════
+   * Una fila por consulta enviada, con el UTM con el que llegó la persona y
+   * un sí/no de inscripción. El inscripto suma en el mes de SU consulta, así
+   * que las dos puntas de la tabla hablan de la misma gente.
+   */
+  function consOk(){ return !!(D.fuentes && D.fuentes.consultas && D.fuentes.consultas.estado === 'ok'); }
+
+  function norm(s){
+    return String(s || '').toLowerCase().normalize('NFD')
+      .replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '');
+  }
+
+  /** Mismo criterio que usa el backend con los UTM de la hoja, para que las
+   *  sesiones y las consultas de una fila hablen del mismo canal. Lo que en
+   *  Analytics es orgánico, directo o referral cae en Orgánico, que es donde
+   *  cae en la hoja todo el que llega sin etiqueta. */
+  function canalDeSesion(fuente, medio){
+    var s = norm(fuente), m = norm(medio);
+    if ((!s || s === 'direct' || s === 'notset') && (!m || m === 'none' || m === 'notset')) return 'Orgánico';
+    if (m === 'organic' || m === 'referral') return 'Orgánico';
+    if (s === 'googleads' || s === 'adwords' || m === 'googleads' || m === 'adwords') return 'Google Ads';
+    if (s === 'google' && (m === 'cpc' || m === 'ppc' || m === 'paidsearch')) return 'Google Ads';
+    if (m === 'paidsocial' || s === 'metaads' || s === 'facebookads') return 'Meta Ads';
+    if ((s === 'facebook' || s === 'fb' || s === 'an') && m !== 'social') return 'Meta Ads';
+    if (s === 'whatsapp' || s.indexOf('wapp') === 0 || m === 'mensajeria') return 'Derivación de WhatsApp';
+    if (s === 'instagram' || s === 'ig' || s.indexOf('bioig') === 0) return 'Instagram orgánico';
+    if (s.indexOf('tiktok') === 0) return 'TikTok';
+    if (m === 'email' || s === 'perfit' || s === 'newsletter') return 'Email';
+    return 'Otro';
+  }
+
+  /** Sesiones del período repartidas con ese mismo criterio. Salen del informe
+   *  de UTM, que es mensual: el filtro de arriba también va por mes. */
+  function sesionesPorCanalPropio(m){
+    var o = {};
+    filtrar('utm_sesiones', m).forEach(function(r){
+      var c = canalDeSesion(r.fuente, r.medio);
+      o[c] = (o[c] || 0) + (Number(r.sesiones) || 0);
+    });
+    return o;
+  }
+
+  /** {canal: {consultas, inscriptos}} de la hoja. */
+  function crmPorCanal(m){
+    var o = {};
+    filtrar('consultas_crm', m).forEach(function(r){
+      var c = r.canal || 'Otro';
+      if(!o[c]) o[c] = { consultas:0, inscriptos:0 };
+      o[c].consultas  += Number(r.consultas)  || 0;
+      o[c].inscriptos += Number(r.inscriptos) || 0;
+    });
+    return o;
+  }
+
+  /* Los dos meses más nuevos siguen sumando inscriptos: parte de esa gente se
+     va a anotar más adelante, y además la marca se carga a mano y sin fecha
+     fija. Compararlos de igual a igual con los viejos hace ver una caída que
+     no pasó. */
+  function mesesTiernos(){ return listaMeses.slice(-2); }
+  function tierno(m){ return mesesTiernos().indexOf(m || mes) >= 0; }
+  var AVISO_TIERNO = 'todavía sumando';
+
   /* ── Desde cuándo el embudo es comparable ────────────────────────────
    * La consulta confirmada (generate_lead) se mide bien recién desde el
    * 31-ago-2026, con la versión 18 de GTM. Antes casi no existe, así que un
@@ -544,10 +611,14 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       'porcentajes que no significan nada.</div>' : '';
   }
 
+  /** Canales de la hoja que cuestan plata. Son los únicos que pueden ir abajo
+   *  de una división de inversión. */
+  var CANALES_PAGOS_CRM = ['Google Ads','Meta Ads','TikTok'];
+  function esPagoCrm(c){ return CANALES_PAGOS_CRM.indexOf(c) >= 0; }
   /** Los que llegaron por un canal pago. Es el numerador del costo por inscripto. */
   function inscPagos(m){
     var o = inscPorCanal(m);
-    return Object.keys(o).reduce(function(s,c){ return esPago(c) ? s+o[c] : s; }, 0);
+    return Object.keys(o).reduce(function(s,c){ return esPagoCrm(c) ? s+o[c] : s; }, 0);
   }
   function invMeta(m){ return metaOk() ? sumar('meta','costo',null,m) : 0; }
 
@@ -752,7 +823,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       tarjeta('','Sesiones', n(ses), ses ? 'convierten al '+pc(leads/ses*100) : '—',
               bloqueDelta(ses, pSes, 'normal')) +
       (inscOk() ? tarjeta('','Inscriptos', n(inscriptos()),
-              'fuente de datos: hoja de cálculo',
+              'de las consultas del período' + (tierno() || mes === 'todo' ? ' · ' + AVISO_TIERNO : ''),
               bloqueDelta(inscriptos(), prev?inscriptos(prev):null, 'normal')) : '') +
       // El costo por inscripto es la pregunta que de verdad importa, y por eso
       // mismo es la que más fácil se responde mal: el inscripto de este mes no
@@ -760,7 +831,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       // qué es en realidad — un cociente del período, no un costo de adquisición.
       (inscOk() ? tarjeta('','Costo por inscripto',
               inscPagos() ? money(invT/inscPagos()) : '—',
-              inscPagos() ? 'inversión del '+(mes==='todo'?'período':'mes')+' ÷ inscriptos de canales pagos'
+              inscPagos() ? 'inversión ÷ inscriptos que consultaron en el '+(mes==='todo'?'período':'mes')
                           : 'ningún inscripto del período vino de un canal pago',
               bloqueDelta(inscPagos()?invT/inscPagos():0, pCpi, 'inverso')) : '');
 
@@ -781,7 +852,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       '</div></div>';
 
     p1embudo();
-    p1inscriptos();
+    p1crm();
 
     var sc = porClave('canales_sesiones','canal','sesiones');
 
@@ -792,26 +863,19 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       bloqueOrigen('De publicidad', pagos, sesPago, leads, 'var(--s-c)');
 
     var canales = Object.keys(sc).sort(function(a,b){ return (lc[b]||0)-(lc[a]||0) || sc[b]-sc[a]; });
-    // Los inscriptos se suman a la tabla de canales cuando hay hoja conectada.
-    // Un canal puede tener inscriptos y ninguna sesión en el mes: la consulta
-    // fue antes. Esa fila entra igual — esconderla sería perder un inscripto.
-    var ic = inscPorCanal(), hayIns = inscOk() && Object.keys(ic).length > 0;
-    var clavesCanal = canales.slice();
-    if(hayIns) Object.keys(ic).forEach(function(c){
-      if(clavesCanal.indexOf(c) < 0) clavesCanal.push(c); });
-
-    $('t-canal-cab').innerHTML = '<tr><th>Canal</th><th>Sesiones</th><th>Consultas</th>' +
-      (hayIns ? '<th>Inscriptos</th>' : '') + '<th>Conversión</th></tr>';
-    $('t-canal').innerHTML = clavesCanal.map(function(c){
+    // Esta tabla es toda de Analytics: sesiones y consultas medidas por el
+    // sitio, con los nombres de canal de Analytics. Los inscriptos no van acá
+    // —salen de la hoja y tienen sus propios nombres de canal— y mezclarlos
+    // obligaría a inventar una equivalencia. Están en la tabla de arriba.
+    $('t-canal-cab').innerHTML =
+      '<tr><th>Canal</th><th>Sesiones</th><th>Consultas</th><th>Conversión</th></tr>';
+    $('t-canal').innerHTML = canales.map(function(c){
       var s = sc[c]||0, l = lc[c]||0;
       return '<tr><td>'+c+(esPago(c)?' <span class="sub">pago</span>':'')+'</td><td>'+n(s)+
         '</td><td>'+n(l)+'</td>' +
-        (hayIns ? '<td>'+n(ic[c]||0)+'</td>' : '') +
         '<td>'+(s?pc(l/s*100):'—')+'</td></tr>';
     }).join('');
-    var totIns = Object.keys(ic).reduce(function(s,c){ return s+ic[c]; }, 0);
     $('t-canal-tot').innerHTML = '<tr><td>Total</td><td>'+n(ses)+'</td><td>'+n(leads)+'</td>' +
-      (hayIns ? '<td>'+n(totIns)+'</td>' : '') +
       '<td>'+(ses?pc(leads/ses*100):'—')+'</td></tr>';
   }
 
@@ -852,77 +916,83 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       'dos puntos, no hay nada que arreglar. Si un día salta a diez, eso sí es un problema.</div>';
   }
 
-  /**
-   * Con qué UTM llegó la consulta que terminó en inscripción.
-   * Es lo único que conecta un inscripto con un canal, porque Analytics no puede
-   * ver una inscripción: pasa meses después, fuera del sitio y muchas veces en
-   * otro dispositivo. El dato sale del UTM que el backend del formulario recibe
-   * al momento de la consulta — es medido, no recordado, pero es de un momento
-   * distinto al de la sesión que cuenta Analytics, así que vive acá, aparte.
+  /* ══ Del tráfico al inscripto, canal por canal ═════════════════════════
+   * Las tres puntas en una sola tabla: cuánta gente entró, cuánta dejó la
+   * consulta y cuánta se inscribió. Las consultas y los inscriptos salen de
+   * la misma fila de la hoja de la universidad, así que el último porcentaje
+   * habla de la misma gente — no es el promedio de dos fuentes distintas.
    */
-  function p1inscriptos(){
-    var caja = $('p1-insc');
-    if(!inscOk()){ caja.innerHTML = ''; return; }
-    var filas = filtrar('inscriptos');
-    if(!filas.length){
-      caja.innerHTML = vacio('Sin inscriptos cargados en este período',
-        'La conexión con la planilla funciona, pero no hay filas para estas fechas.');
+  function p1crm(){
+    var caja = $('p1-crm');
+    if(!consOk()){ caja.innerHTML = ''; return; }
+
+    var crm = crmPorCanal();
+    if(!Object.keys(crm).length){
+      caja.innerHTML = vacio('Sin consultas en este período',
+        'La hoja de la universidad está conectada, pero no tiene filas para estas fechas.');
       return;
     }
-    var porCanal = {}, equiv = {}, total = 0;
-    filas.forEach(function(r){
-      var k = r.canal || 'Sin cargar', v = Number(r.cantidad)||0;
-      porCanal[k] = (porCanal[k]||0) + v; total += v;
-      if(r.equivale) equiv[k] = r.equivale;
-    });
-    // "Sin dato" y "No contestó" van siempre al final: no compiten por el podio,
-    // y una celda vacía no es un canal.
-    var alFondo = function(c){
-      return c === 'Sin cargar' || c === 'Sin dato' || c === 'No lo sabemos'; };
-    var orden = Object.keys(porCanal).sort(function(a,b){
-      if(alFondo(a) !== alFondo(b)) return alFondo(a) ? 1 : -1;
-      return porCanal[b]-porCanal[a];
-    });
-    var max = Math.max.apply(null, orden.filter(function(c){ return !alFondo(c); })
-      .map(function(c){ return porCanal[c]; }).concat([1]));
+    var ses = sesionesPorCanalPropio();
 
-    // Sin respuesta son tres cosas: nadie lo cargó, no se preguntó, o preguntamos
-    // y no contestaron. Para leer la tabla dan lo mismo — ninguna dice de dónde
-    // vino — pero sólo la primera es un problema de proceso.
-    var vacios = (porCanal['Sin cargar']||0) + (porCanal['Sin dato']||0) +
-                 (porCanal['No lo sabemos']||0);
-    var pcVacios = total ? vacios/total*100 : 0;
+    var claves = Object.keys(crm);
+    Object.keys(ses).forEach(function(c){ if(claves.indexOf(c) < 0) claves.push(c); });
+
+    // "Otro" al final: es un cajón, no un canal.
+    var alFondo = function(c){ return c === 'Otro'; };
+    claves.sort(function(a,b){
+      if(alFondo(a) !== alFondo(b)) return alFondo(a) ? 1 : -1;
+      return ((crm[b]||{}).consultas||0) - ((crm[a]||{}).consultas||0);
+    });
+
+    var tc = 0, ti = 0, ts = 0;
+    claves.forEach(function(c){
+      tc += (crm[c]||{}).consultas || 0;
+      ti += (crm[c]||{}).inscriptos || 0;
+      ts += ses[c] || 0;
+    });
+
+    var fila = function(c){
+      var s = ses[c] || 0, q = (crm[c]||{}).consultas || 0, i = (crm[c]||{}).inscriptos || 0;
+      return '<tr><td>'+c+'</td>' +
+        '<td>'+(s ? n(s) : '—')+'</td>' +
+        '<td>'+n(q)+'</td>' +
+        '<td>'+(s && q <= s ? pc(q/s*100) : '—')+'</td>' +
+        '<td>'+n(i)+'</td>' +
+        '<td>'+(q ? pc(i/q*100) : '—')+'</td></tr>';
+    };
 
     caja.innerHTML =
-      '<div class="card"><header><div><h2>Con qué origen llegaron los inscriptos</h2>' +
-      '<p class="hint">El UTM con el que entró la consulta que terminó en inscripción, según ' +
-      'lo que ve el backend del formulario.</p></div>' +
-      '<span class="pill">'+n(total)+' inscriptos</span></header>' +
-      (vacios ? '<div class="note"><strong>De '+n(total)+' inscriptos, '+n(vacios)+
-        ' ('+pc(pcVacios)+') no tienen origen identificado.</strong> ' +
-        (pcVacios > 20
-          ? 'Con esa proporción, los porcentajes de abajo no describen al conjunto: describen ' +
-            'a los que sí se pudieron identificar, que pueden no parecerse en nada al resto.'
-          : 'Es poco y no cambia la lectura.') +
-        ' <em>No lo sabemos</em> es que la consulta llegó sin UTM reconocible. ' +
-        '<em>Sin cargar</em> es una celda vacía en la planilla, y es lo único que hay que ' +
-        'corregir a mano.</div>' : '') +
-      '<div class="tw"><table><thead><tr><th>Origen de la consulta</th>' +
-      '<th>Equivale en el tablero a</th><th>Inscriptos</th>' +
-      '<th>Participación</th></tr></thead><tbody>' +
-      orden.map(function(c){
-        return '<tr><td>'+c+'</td>'+
-          '<td class="sub" style="text-align:left">'+(equiv[c]||'—')+'</td>'+
-          '<td>'+n(porCanal[c])+'</td><td>'+
-          pc(porCanal[c]/total*100)+'<div class="bartrack"><span class="bar" style="width:'+
-          (porCanal[c]/max*100).toFixed(1)+'%"></span></div></td></tr>';
-      }).join('') + '</tbody></table></div>' +
-      '<div class="note"><strong>Esto no se compara uno a uno con el embudo de arriba, y no ' +
-      'porque uno esté mal.</strong> Acá cada inscripto trae el UTM de la consulta que lo ' +
-      'originó, que pudo ser en mayo; el embudo cuenta las sesiones del período elegido. Son ' +
-      'dos momentos distintos del mismo recorrido. Lo que sí sirve es leerlos juntos: si un ' +
-      'canal pesa mucho acá y poco arriba, está trayendo gente que se inscribe — que es lo que ' +
-      'importa — aunque no aparezca en el volumen del mes.</div></div>';
+      '<div class="card"><header><div><h2>Del tráfico al inscripto, canal por canal</h2>' +
+      '<p class="hint">Cuánta gente entró, cuánta dejó la consulta y cuánta terminó ' +
+      'inscribiéndose. El inscripto se cuenta en el mes en que consultó, no en el mes en que ' +
+      'se anotó.</p></div>' +
+      '<span class="pill">'+n(ti)+' inscriptos sobre '+n(tc)+' consultas</span></header>' +
+      '<div class="tw"><table><thead><tr><th>Canal</th><th>Sesiones</th><th>Consultas</th>' +
+      '<th>de las sesiones</th><th>Inscriptos</th><th>de las consultas</th></tr></thead><tbody>' +
+      claves.map(fila).join('') +
+      '</tbody><tfoot><tr><td>Total</td><td>'+(ts ? n(ts) : '—')+'</td><td>'+n(tc)+'</td>' +
+      '<td>'+(ts && tc <= ts ? pc(tc/ts*100) : '—')+'</td><td>'+n(ti)+'</td>' +
+      '<td>'+(tc ? pc(ti/tc*100) : '—')+'</td></tr></tfoot></table></div>' +
+
+      (tierno() || mes === 'todo'
+        ? '<div class="note"><strong>Los inscriptos de los meses más nuevos están ' +
+          'incompletos, siempre.</strong> Por dos razones que se suman: parte de esa gente se ' +
+          'va a anotar más adelante, y la marca de inscripto se carga a mano, sin una ' +
+          'frecuencia fija. Un mes recién cerrado nunca se puede comparar de igual a igual ' +
+          'con uno de hace tres meses.</div>'
+        : '') +
+
+      '<div class="note"><strong>De dónde sale cada columna.</strong> Las consultas y los ' +
+      'inscriptos salen de la hoja de la universidad: una fila por formulario enviado, con el ' +
+      'UTM que traía la persona en ese momento. Las sesiones son de Analytics, agrupadas con ' +
+      'el mismo criterio. Quien llega sin UTM cuenta como <em>Orgánico</em>, que es también ' +
+      'donde cae el que perdió la etiqueta navegando por el sitio antes de completar.</div>' +
+
+      '<div class="note"><strong>Meta se lee aparte.</strong> Sus anuncios se empezaron a ' +
+      'etiquetar en octubre de 2026: antes de esa fecha sus consultas no se pueden separar del ' +
+      'resto y están contadas como orgánicas. Además, la mayor parte de la inversión de Meta ' +
+      'va a campañas de mensajes de WhatsApp, que no pasan por el formulario del sitio y se ' +
+      'miden por sus conversaciones, en la página de medios pagos.</div></div>';
   }
 
   function p1embudo(){
@@ -1103,15 +1173,12 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       'y 35% al consultar, está rindiendo por encima de su tamaño. La tabla está ordenada por ' +
       'conversión, no por volumen: un canal chico arriba de todo es una pista de dónde poner ' +
       'más plata.</div>' +
-      (ins ? '<div class="note"><strong>El último paso no se divide por el anterior.</strong> ' +
-        'Los inscriptos de un mes vienen de consultas que pudieron entrar en mayo: el embudo ' +
-        'cuenta las sesiones del período elegido y la inscripción llega meses después. ' +
-        'Dividir una cosa por la otra da un número que parece una tasa de conversión y no lo ' +
-        'es. La conversión consulta → inscripto recién se puede leer sobre un ciclo cerrado: ' +
-        'todas las consultas del ciclo contra todos los inscriptos de ese ciclo. ' +
-        'Lo que sí sirve mes a mes es la <em>mezcla</em>: qué canales aparecen en la banda de ' +
-        'abajo y con qué peso. Un canal que pesa poco arriba y mucho abajo trae menos gente ' +
-        'pero de la que se inscribe.</div>' : '') +
+      (ins ? '<div class="note"><strong>El último paso sí se divide por el anterior.</strong> ' +
+        'El inscripto viene de la misma fila que su consulta, así que los dos escalones hablan ' +
+        'de la misma gente: de las consultas que entraron en el período elegido, ésas son las ' +
+        'que terminaron anotándose. Lo que no se puede es comparar un mes recién cerrado con ' +
+        'uno de hace tres: los meses nuevos siguen sumando inscriptos durante meses, y además ' +
+        'la marca de inscripto se carga a mano, sin frecuencia fija.</div>' : '') +
       '</div>';
   }
 
@@ -1200,12 +1267,12 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       '<div class="note"><strong>Las consultas de esta página incluyen los dos formularios.</strong> ' +
       'El valor sale del parámetro <code>carrera</code> del evento de consulta, venga del popup ' +
       'de la carrera o de la página de consultas. El desglose por formulario está en la página 3.</div>' +
-      (hayInsc ? '<div class="note"><strong>Los inscriptos no se dividen por las consultas de ' +
-        'esta tabla, y no es una omisión.</strong> Quien consulta en septiembre se inscribe en ' +
-        'febrero: son dos momentos distintos, y dividir uno por otro dentro del mismo mes da un ' +
-        'porcentaje que no describe nada. La tasa de consulta a inscripto se puede calcular ' +
-        'recién sobre un ciclo cerrado — las consultas de todo el ciclo contra los inscriptos ' +
-        'que dejó ese ciclo.</div>' : '') +
+      (hayInsc ? '<div class="note"><strong>Esta tabla no lleva inscriptos, y no es una ' +
+        'omisión.</strong> Las consultas de acá las cuenta Analytics por la carrera que la ' +
+        'persona eligió en el formulario; los inscriptos salen de la hoja de la universidad. ' +
+        'Son dos fuentes y dos maneras de contar, así que ponerlas en la misma fila invitaría ' +
+        'a dividir una por otra. El paso de consulta a inscripto está en el resumen, por canal, ' +
+        'donde las dos puntas salen de la misma fila.</div>' : '') +
       '</div>';
 
     $('p2-paginas').innerHTML = vistas.sueltas.length
@@ -1301,25 +1368,24 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       tarjeta('','Consultas', n(gl), si?pc(gl/si*100)+' de los que enviaron':'—',
               bloqueDelta(gl,pGl,'normal')) +
       (inscOk() ? tarjeta('','Inscriptos', n(inscriptos()),
-              'fuente de datos: hoja de cálculo',
+              'de las consultas del período' + (tierno() || mes === 'todo' ? ' · ' + AVISO_TIERNO : ''),
               bloqueDelta(inscriptos(), prev?inscriptos(prev):null, 'normal')) : '');
 
     // El paso de inscriptos se agrega al final del embudo del formulario cuando
-    // hay hoja conectada. No comparte origen con los tres de arriba — esos los
-    // mide Analytics en el momento, éste se carga a mano y llega meses después —
-    // pero verlo al pie es lo que convierte un embudo de formulario en un embudo
-    // de captación. La nota de abajo aclara qué es cada cosa.
+    // hay hoja conectada. Sigue sin compartir origen con los tres de arriba
+    // —esos los mide Analytics en el sitio, éste sale de la hoja— pero ahora
+    // cuenta a la misma gente: los que consultaron en el período.
     var marcaAp = aperturasIncompletas() ? 'incompleto' : undefined;
     var pasosT = [['Abrieron',fs,marcaAp],['Apretaron enviar',si],['Consulta confirmada',gl]];
     if(inscOk() && inscriptos() > 0) pasosT.push(['Se inscribieron', inscriptos(), 'otra-fuente']);
     embudo('f-total', pasosT);
     $('f-total-nota').innerHTML = avisoDesde() + ((inscOk() && inscriptos() > 0)
-      ? '<div class="note"><strong>Los tres primeros pasos y el último no se miden igual.</strong> ' +
-        'Abrieron, apretaron enviar y consulta confirmada son eventos de Analytics del período ' +
-        'elegido. Los inscriptos salen de la hoja de cálculo y corresponden a consultas que ' +
-        'pudieron entrar meses antes. Por eso el porcentaje del último escalón no es una tasa ' +
-        'de conversión: es la relación entre dos cosas de momentos distintos. Se lee de verdad ' +
-        'sobre un ciclo cerrado.</div>'
+      ? '<div class="note"><strong>Los tres primeros pasos y el último no se miden igual, pero ' +
+        'cuentan a la misma gente.</strong> Abrieron, apretaron enviar y consulta confirmada ' +
+        'son eventos que Analytics mide en el sitio. Los inscriptos salen de la hoja de ' +
+        'cálculo de la universidad y se cuentan en el mes en que esa persona consultó, así que ' +
+        'el último escalón sí es una tasa. Lo único que le falta es tiempo: los meses más ' +
+        'nuevos siguen sumando inscriptos.</div>'
       : '');
 
     // Embudo separado por origen, cuando el informe por canal está disponible.
@@ -1337,12 +1403,12 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
         '<div class="card"><header><h2>De publicidad</h2><span class="pill">' +
           n(g.pago.form_start||0) + ' aperturas</span></header>' +
           '<div class="funnel" id="f-pago"></div></div></div>';
-      // Los inscriptos se parten con el mismo criterio que las consultas: la
-      // columna "equivale" de la hoja dice a qué canal pertenece cada uno, y de
-      // ahí sale si ese canal es pago o no.
+      // Los inscriptos se parten con el mismo criterio que las consultas: el
+      // canal que el backend armó con el UTM de la consulta dice si vino de
+      // algo que costó plata o de algo que llegó solo.
       var icP = inscPorCanal(), insPago = 0, insLibre = 0;
       Object.keys(icP).forEach(function(c){
-        if(esPago(c)) insPago += icP[c]; else insLibre += icP[c]; });
+        if(esPagoCrm(c)) insPago += icP[c]; else insLibre += icP[c]; });
 
       var pLibre = [['Abrieron',g.libre.form_start||0,marcaAp],
                     ['Apretaron enviar',g.libre.SENDINFO||0],
@@ -1626,10 +1692,9 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     var scg = porClave('canales_sesiones','canal','sesiones'), sesG = 0;
     Object.keys(scg).forEach(function(c){ if(esPago(c) && c !== 'Paid Social') sesG += scg[c]; });
 
-    // Inscriptos que la hoja de cálculo atribuye a búsqueda paga. Paid Social
-    // queda afuera igual que en las consultas: esa es la plata de Meta.
-    var icG = inscPorCanal(), insG = 0;
-    Object.keys(icG).forEach(function(c){ if(esPago(c) && c !== 'Paid Social') insG += icG[c]; });
+    // Inscriptos que llegaron con el UTM de Google Ads. Meta queda afuera
+    // igual que en las consultas: esa es su propia plata y su propia página.
+    var insG = inscPorCanal()['Google Ads'] || 0;
 
     $('p5-cuerpo').innerHTML = '<div class="kpis">' +
       tarjeta('','Inversión Google', money(inv), n(clics)+' clics · '+n(impr)+' impresiones') +
@@ -1638,7 +1703,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
               sesG ? n(lp)+' consultas sobre '+n(sesG)+' sesiones' : 'sin sesiones en el período') +
       tarjeta('','Costo por consulta', lp?money(inv/lp):'—', 'inversión Google ÷ sus consultas') +
       (inscOk() ? tarjeta('','Inscriptos de Google', n(insG),
-              'según la hoja de cálculo, sin Paid Social') : '') +
+              'consultaron con el UTM de Google Ads') : '') +
       (inscOk() ? tarjeta('','Costo por inscripto', insG?money(inv/insG):'—',
               insG ? (mes==='todo' ? 'inversión del período ÷ inscriptos del período' : 'inversión del mes ÷ inscriptos del mes')
                    : 'ningún inscripto del período vino de búsqueda paga') : '') +
@@ -1646,10 +1711,10 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
               'gente que ya buscaba UCINE por nombre') +
       '</div>' +
       (inscOk() && insG ? '<div class="card"><div class="note"><strong>El costo por inscripto ' +
-        'de arriba es del período, no de la cohorte.</strong> Esos inscriptos vienen de ' +
-        'consultas que pudieron entrar hace meses, con la inversión de esos meses. Sirve para ' +
-        'ver el orden de magnitud y para comparar Google contra Meta en el mismo período; no ' +
-        'sirve para decir cuánto costó conseguir a cada uno. Eso se sabe al cerrar el ciclo.' +
+        'de arriba sí es de la cohorte.</strong> Esos inscriptos consultaron dentro del ' +
+        'período, así que la inversión del período es la que los trajo. Con una salvedad: los ' +
+        'meses recién cerrados todavía suman inscriptos, así que su costo arranca alto y baja ' +
+        'con el tiempo. Un mes viejo y uno nuevo no se comparan de igual a igual.' +
         '</div></div>' : '') +
       '<div class="card"><header><div><h2>Campaña por campaña</h2>' +
       '<p class="hint">Marca y no-marca se clasifican por ID de campaña, no por el nombre: si ' +
@@ -1726,8 +1791,8 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       tarjeta('','Conversaciones de WhatsApp', n(convo),
               convo?'costo por conversación '+money(inv/convo):'campañas de mensajes') +
       tarjeta('','Consultas según Analytics', n(social), 'canal Paid Social, formulario confirmado') +
-      (inscOk() ? tarjeta('','Inscriptos de Meta', n(inscPorCanal()['Paid Social']||0),
-              'según la hoja de cálculo, canal Paid Social') : '') +
+      (inscOk() ? tarjeta('','Inscriptos de Meta', n(inscPorCanal()['Meta Ads']||0),
+              'consultaron con el UTM de Meta · se etiqueta desde octubre') : '') +
       tarjeta('','Leads según Meta', n(leads), leads?'los cuenta Meta, con su ventana':'esta cuenta no reporta leads') +
       '</div>' +
       '<div class="card"><header><div><h2>Campaña por campaña · Meta</h2>' +
@@ -1801,7 +1866,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
         '<td class="sub" style="text-align:left">'+(e.mensaje||'—')+'</td></tr>';
     }).join('') || '<tr><td colspan="4" class="sub">Sin registro todavía.</td></tr>';
 
-    var sinMapeo = D.inscriptos_sin_mapeo || [], descInsc = D.inscriptos_descartadas || [];
+    var desconocidos = D.consultas_desconocidas || [];
     var fuera = D.meta_excluidas || [], acc = D.meta_acciones || [];
     $('p6-meta').innerHTML = '<div class="card"><header><div><h2>Cómo se aísla UCINE en Meta</h2>' +
       '<p class="hint">La cuenta publicitaria es compartida. El corte se hace por nombre de ' +
@@ -1813,18 +1878,13 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       '<tr><td>Conversiones que informa la cuenta</td><td class="sub">' +
         (acc.length ? acc.join(' · ') : '—') + '</td></tr>' +
       '</tbody></table></div></div>' +
-      (sinMapeo.length ? '<div class="card"><header><div><h2>Carreras de la hoja sin traducir</h2>' +
-        '<p class="hint">Están escritas de una forma que no figura en la solapa ' +
-        '<code>CARRERAS</code> de la hoja de cálculo. Entran igual al tablero, con el nombre tal ' +
-        'cual vino, pero aparecen como una carrera aparte en vez de sumarse a la que ' +
-        'corresponde.</p></div></header>' +
-        '<div class="tw"><table><tbody>' + sinMapeo.map(function(c){
-          return '<tr><td>'+c+'</td></tr>'; }).join('') + '</tbody></table></div></div>' : '') +
-      (descInsc.length ? '<div class="card"><header><div><h2>Filas de la hoja que no se pudieron leer</h2>' +
-        '<p class="hint">Están cargadas pero no entran al tablero. Son inscriptos reales que ' +
-        'hoy no se están contando.</p></div>' +
-        '<span class="pill">'+n(descInsc.length)+'</span></header>' +
-        '<div class="tw"><table><tbody>' + descInsc.map(function(d){
+      (desconocidos.length ? '<div class="card"><header><div><h2>UTM que no caen en ningún canal</h2>' +
+        '<p class="hint">Consultas que llegaron con una etiqueta que el tablero no sabe a qué ' +
+        'canal pertenece. Entran igual, agrupadas en <em>Otro</em>. Si alguna merece su propio ' +
+        'canal, se agrega al backend y aparece separada desde la corrida siguiente.</p></div>' +
+        '<span class="pill">'+n(desconocidos.length)+'</span></header>' +
+        '<div class="tw"><table><thead><tr><th>fuente / medio</th></tr></thead><tbody>' +
+        desconocidos.map(function(d){
           return '<tr><td>'+d+'</td></tr>'; }).join('') + '</tbody></table></div></div>' : '');
   }
 
