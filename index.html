@@ -98,19 +98,21 @@ h1,h2{margin:0}
   margin:0 4px 0 8px}
 
 /* ── KPI ── */
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:14px}
+/* Tarjetas compactas: entran más por pantalla y el número sigue siendo lo
+   primero que se ve. El que lidera el bloque va un punto más grande. */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(172px,1fr));gap:10px}
 .kpi{background:var(--surface);border:1px solid var(--hair);border-radius:var(--r);
-  box-shadow:var(--sh);padding:15px 17px 16px;display:flex;flex-direction:column;gap:3px;min-width:0}
-.kpi .k{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
-.kpi .v{font-size:31px;font-weight:800;letter-spacing:-.03em;line-height:1.15;margin-top:4px}
+  box-shadow:var(--sh);padding:11px 13px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi .k{font-size:9.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.kpi .v{font-size:26px;font-weight:800;letter-spacing:-.03em;line-height:1.12;margin-top:3px}
 /* El número grande va en tinta normal. El rojo queda reservado para cuando
    algo está mal: un indicador en rojo que en realidad es bueno hace levantar
    la vista a cualquiera que entre a mirar el tablero de corrido. */
-.kpi.hero .v{font-size:38px}
+.kpi.hero .v{font-size:31px}
 .kpi.hero.malo .v{color:var(--marca)}
-.kpi .d{font-size:12px;color:var(--muted);margin-top:1px}
-.kpi .deltas{display:flex;gap:14px;flex-wrap:wrap;margin-top:9px;padding-top:9px;
-  border-top:1px solid var(--hair);font-size:11.5px;color:var(--muted)}
+.kpi .d{font-size:11px;color:var(--muted);margin-top:1px;line-height:1.35}
+.kpi .deltas{display:flex;gap:12px;flex-wrap:wrap;margin-top:7px;padding-top:7px;
+  border-top:1px solid var(--hair);font-size:11px;color:var(--muted)}
 .kpi .deltas b{font-weight:700}
 .up{color:var(--sube)} .down{color:var(--baja)} .flat{color:var(--neutro)}
 
@@ -137,8 +139,8 @@ h1,h2{margin:0}
 
 /* ── tablas ── */
 .tw{overflow-x:auto;margin:0 -18px;padding:0 18px}
-table{border-collapse:collapse;width:100%;font-size:13px}
-th,td{text-align:right;padding:8px 11px;white-space:nowrap;border-bottom:1px solid var(--hair)}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{text-align:right;padding:6px 10px;white-space:nowrap;border-bottom:1px solid var(--hair)}
 td{font-variant-numeric:tabular-nums}
 th:first-child,td:first-child{text-align:left;white-space:normal;min-width:165px;font-weight:500}
 thead th{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
@@ -152,21 +154,40 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
 
 /* ── embudo ── */
 /* ── embudo madre ── */
-/* Las bandas van gruesas y casi pegadas: así los cuatro pasos se leen como un
-   solo cuerpo que se angosta — un embudo — y no como cuatro barras sueltas. */
-.embudom{display:flex;flex-direction:column;gap:6px;align-items:center;padding:6px 0 2px}
-.epaso{width:100%;display:flex;flex-direction:column;align-items:center;gap:5px}
-.ecab{width:100%;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-.ecab .enom{font-size:12.5px;font-weight:600;color:var(--ink);min-width:172px}
-.ecab .eval{font-size:15px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
-.ecab .esig{font-size:11.5px;color:var(--muted);margin-left:auto}
-.epista{display:flex;height:48px;border-radius:8px;overflow:hidden;background:var(--grid);
+/* El embudo se lee de un vistazo: el nombre y el número a la izquierda, en
+   columnas fijas, y la banda al lado. Las bandas van juntas y angostándose, así
+   los pasos forman un solo cuerpo y no cuatro barras sueltas. */
+.embudom{display:flex;flex-direction:column;gap:5px;padding:4px 0 2px}
+.epaso{display:grid;grid-template-columns:150px 64px minmax(0,1fr) 150px;gap:12px;
+  align-items:center}
+.epaso .enom{font-size:12.5px;font-weight:600;color:var(--ink)}
+.epaso .eval{font-size:17px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;
+  text-align:right}
+.epaso .esig{font-size:11px;color:var(--muted);text-align:right;line-height:1.3}
+.epista{display:flex;height:30px;border-radius:6px;overflow:hidden;background:var(--grid);
   transition:width .2s}
-.eseg{height:100%;box-shadow:0 0 0 1px var(--surface) inset;min-width:2px;overflow:hidden;
-  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;
+.eseg{height:100%;min-width:2px;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;
   font-variant-numeric:tabular-nums;white-space:nowrap}
 .eseg:not(:last-child){margin-right:2px}
-@media (max-width:640px){ .ecab .enom{min-width:0} .ecab .esig{margin-left:0;width:100%} }
+@media (max-width:760px){
+  .epaso{grid-template-columns:minmax(0,1fr) auto;gap:4px 10px}
+  .epaso .epista{grid-column:1 / -1}
+  .epaso .esig{grid-column:1 / -1;text-align:left}
+}
+
+/* "Cómo leer esto": todas las aclaraciones del resumen, plegadas. El tablero
+   muestra datos; el que necesita el detrás de escena lo abre. */
+.comoleer{margin-top:14px;background:var(--surface);border:1px solid var(--hair);
+  border-radius:var(--r);box-shadow:var(--sh)}
+.comoleer>summary{cursor:pointer;padding:13px 17px;font-size:13px;font-weight:700;
+  color:var(--ink);list-style:none;display:flex;align-items:center;gap:8px}
+.comoleer>summary::-webkit-details-marker{display:none}
+.comoleer>summary::before{content:"▸";color:var(--muted);font-size:11px}
+.comoleer[open]>summary::before{content:"▾"}
+.comoleer>summary span{font-weight:400;color:var(--muted)}
+.comoleer .cuerpo{padding:0 17px 14px}
+.comoleer .note{max-width:none}
 
 .funnel{display:flex;flex-direction:column;gap:4px}
 .fstep{display:grid;grid-template-columns:156px minmax(0,1fr) 78px 78px;gap:13px;align-items:center}
@@ -291,6 +312,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
         publicidad va en una sola línea; lo que llega solo, separado por de dónde viene.</p></div></header>
         <div class="chartbox"><canvas id="c-ses"></canvas></div></div>
     </div>
+    <div id="p1-comoleer"></div>
   </section>
 
   <!-- 2 -->
@@ -448,6 +470,12 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
 
   traer(true);
   setInterval(function(){ traer(false); }, REFRESCO_MIN * 60000);
+
+  /* Las aclaraciones del resumen no se muestran al lado de cada número: se
+     juntan acá y se abren al pie, en "Cómo leer esto". El tablero tiene que
+     poder quedar en una pantalla sin un párrafo entre cada dato. */
+  var NOTAS = [];
+  function nota(html){ if(html) NOTAS.push(html); }
 
   /* ── filtros ── */
   function enMes(f, m){ m = m || mes; return m === 'todo' || String(f).slice(0,7) === m; }
@@ -773,6 +801,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
 
   /* ── 1 ── */
   function p1(){
+    NOTAS = [];
     var prev = mesAnterior();
     var leads = evento('generate_lead'), ses = sumar('dias','sesiones'), inv = sumar('google_ads','costo');
     var lc = porClave('canales_leads','canal','leads');
@@ -843,8 +872,9 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
        no haya nada excluido: el día que alguien prenda una campaña de mensajes,
        el número cambia solo y este renglón es lo único que lo explica. */
     var fuera = invM - invMS;
-    $('p1-nota').innerHTML = !metaOk() ? '' :
-      '<div class="card"><div class="note"><strong>Qué inversión entra en el costo por ' +
+    $('p1-nota').innerHTML = '';
+    nota(!metaOk() ? '' :
+      '<div class="note"><strong>Qué inversión entra en el costo por ' +
       'consulta.</strong> Entra la que lleva gente al sitio: todo Google Ads (' + money(inv) +
       ') y, de Meta, sólo las campañas de tráfico y clientes potenciales (' + money(invMS) + ').' +
       (fuera > 0
@@ -853,7 +883,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
           'inventado. Ese dinero se mide por su propio resultado — las conversaciones de ' +
           'WhatsApp, en la página de medios pagos.'
         : ' Hoy todas las campañas de Meta activas llevan al sitio, así que no quedó nada afuera.') +
-      '</div></div>';
+      '</div>');
 
     p1embudo();
     p1crm();
@@ -881,6 +911,14 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     }).join('');
     $('t-canal-tot').innerHTML = '<tr><td>Total</td><td>'+n(ses)+'</td><td>'+n(leads)+'</td>' +
       '<td>'+(ses?pc(leads/ses*100):'—')+'</td></tr>';
+
+    // Todas las aclaraciones juntas y plegadas al pie. Se escriben igual de
+    // completas que antes: lo que cambia es que no interrumpen la lectura.
+    $('p1-comoleer').innerHTML = NOTAS.length
+      ? '<details class="comoleer"><summary>Cómo leer esto ' +
+        '<span>— de dónde sale cada número y qué no se puede comparar</span></summary>' +
+        '<div class="cuerpo">' + NOTAS.join('') + '</div></details>'
+      : '';
   }
 
   /* ══ El embudo madre ═══════════════════════════════════════════════════
@@ -987,27 +1025,26 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       claves.map(fila).join('') +
       '</tbody><tfoot><tr><td>Total</td><td>'+(ts ? n(ts) : '—')+'</td><td>'+n(tc)+'</td>' +
       '<td>'+(ts && tc <= ts ? pc(tc/ts*100) : '—')+'</td><td>'+n(ti)+'</td>' +
-      '<td>'+(tc ? pc(ti/tc*100) : '—')+'</td></tr></tfoot></table></div>' +
+      '<td>'+(tc ? pc(ti/tc*100) : '—')+'</td></tr></tfoot></table></div></div>';
 
-      (tierno() || mes === 'todo'
-        ? '<div class="note"><strong>Los inscriptos de los meses más nuevos están ' +
-          'incompletos, siempre.</strong> Por dos razones que se suman: parte de esa gente se ' +
-          'va a anotar más adelante, y la marca de inscripto se carga a mano, sin una ' +
-          'frecuencia fija. Un mes recién cerrado nunca se puede comparar de igual a igual ' +
-          'con uno de hace tres meses.</div>'
-        : '') +
-
-      '<div class="note"><strong>De dónde sale cada columna.</strong> Las consultas y los ' +
-      'inscriptos salen de la hoja de la universidad: una fila por formulario enviado, con el ' +
-      'UTM que traía la persona en ese momento. Las sesiones son de Analytics, agrupadas con ' +
-      'el mismo criterio. Quien llega sin UTM cuenta como <em>Orgánico</em>, que es también ' +
-      'donde cae el que perdió la etiqueta navegando por el sitio antes de completar.</div>' +
-
-      '<div class="note"><strong>Meta se lee aparte.</strong> Sus anuncios se empezaron a ' +
+    if(tierno() || mes === 'todo'){
+      nota('<div class="note"><strong>Los inscriptos de los meses más nuevos están ' +
+        'incompletos, siempre.</strong> Por dos razones que se suman: parte de esa gente se ' +
+        'va a anotar más adelante, y la marca de inscripto se carga a mano, sin una ' +
+        'frecuencia fija. Un mes recién cerrado nunca se puede comparar de igual a igual ' +
+        'con uno de hace tres meses.</div>');
+    }
+    nota('<div class="note"><strong>De dónde sale cada columna de la tabla por canal.</strong> ' +
+      'Las consultas y los inscriptos salen de la hoja de la universidad: una fila por ' +
+      'formulario enviado, con el UTM que traía la persona en ese momento. Las sesiones son ' +
+      'de Analytics, agrupadas con el mismo criterio. Quien llega sin UTM cuenta como ' +
+      '<em>Orgánico</em>, que es también donde cae el que perdió la etiqueta navegando por el ' +
+      'sitio antes de completar.</div>');
+    nota('<div class="note"><strong>Meta se lee aparte.</strong> Sus anuncios se empezaron a ' +
       'etiquetar en octubre de 2026: antes de esa fecha sus consultas no se pueden separar del ' +
       'resto y están contadas como orgánicas. Además, la mayor parte de la inversión de Meta ' +
       'va a campañas de mensajes de WhatsApp, que no pasan por el formulario del sitio y se ' +
-      'miden por sus conversaciones, en la página de medios pagos.</div></div>';
+      'miden por sus conversaciones, en la página de medios pagos.</div>');
   }
 
   function p1embudo(){
@@ -1098,16 +1135,14 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
         : pc(t/ant*100) + ' del paso anterior' +
           (p.pie === 'form_start' && aperturasIncompletas() ? ' · ' + NOTA_APERTURAS : '');
       return '<div class="epaso">' +
-        '<div class="ecab"><span class="enom">'+p.nom+'</span>' +
-          '<span class="eval">'+n(t)+'</span>' +
-          '<span class="esig">'+derecha+'</span>' +
-        '</div>' +
+        '<span class="enom">'+p.nom+'</span>' +
+        '<span class="eval">'+n(t)+'</span>' +
         '<div class="epista" style="width:'+ancho.toFixed(2)+'%">' +
           seg.map(function(s){
             var q = t ? s.v/t*100 : 0;
             // El número va adentro sólo si entra. Un "12,4%" apretado en dos
             // píxeles no se lee y ensucia; para esos está el globo al pasar.
-            var etq = q >= 7 ? nf1.format(q)+'%' : (q >= 3.5 ? Math.round(q)+'%' : '');
+            var etq = q * ancho / 100 >= 9 ? Math.round(q)+'%' : '';
             // Una banda de un solo canal con "100,0%" adentro no dice nada: el
             // 100% ya se entiende al ver que no hay nada más. Lo que falta ahí
             // es de qué canal se trata, así que va el nombre en vez del número.
@@ -1117,12 +1152,13 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
             // Se mide contra el ancho real en pantalla, no contra el porcentaje
             // dentro del paso: un 30% de una banda al 40% es angosto, y ahí el
             // nombre se cortaría por la mitad.
-            else if(q * ancho / 100 >= 15) etq = s.nom + ' · ' + nf1.format(q) + '%';
+            else if(q * ancho / 100 >= 20) etq = s.nom + ' · ' + Math.round(q) + '%';
             return '<span class="eseg" style="width:'+q.toFixed(2)+'%;background:'+s.color+
               ';color:'+(s.tinta||TINTA_EMBUDO[s.nom]||'#fff')+'" title="'+s.nom+': '+n(s.v)+
               ' · '+nf1.format(q)+'% del paso">'+etq+'</span>';
           }).join('') +
-        '</div></div>';
+        '</div>' +
+        '<span class="esig">'+derecha+'</span></div>';
     }).join('');
 
     var leyenda = orden.map(function(c){
@@ -1151,16 +1187,9 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
 
     $('p1-embudo').innerHTML =
       '<div class="card"><header><div><h2>De la visita a la inscripción</h2>' +
-      '<p class="hint"><strong>Entraron</strong> son sesiones de Analytics: visitas, no personas ' +
-      '— quien entra el lunes y el viernes cuenta dos veces. Cada paso está partido por canal, ' +
-      'y las barras no están a escala entre sí: el ancho sirve para comparar la mezcla, no el ' +
-      'volumen. El canal que se agranda al bajar es el que mejor convierte. Qué cuenta cada ' +
-      'paso, explicado sin tecnicismos: al pie de <em>Embudo del formulario</em>.' +
-      (ins ? ' Los cuatro primeros pasos los mide Analytics; el último sale de la hoja de la ' +
-             'universidad y usa sus propios nombres de canal, con su propia referencia de ' +
-             'colores debajo del embudo.' : '')+'</p></div>' +
+      '<p class="hint">Las barras comparan la mezcla de canales, no el volumen: el canal que ' +
+      'se agranda al bajar es el que mejor convierte.</p></div>' +
       '<div class="legend">'+leyenda+'</div></header>' +
-      avisoDesde() +
       '<div class="embudom">'+filas+'</div>' +
       (ins ? '<div class="legend" style="margin-top:10px">' +
         '<span class="sub" style="margin-right:4px">Se inscribieron, por el canal de su ' +
@@ -1182,24 +1211,30 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       '</td><td>'+n(tGl)+'</td>' +
       '<td>'+(tSes?pc(tGl/tSes*100):'—')+'</td></tr></tfoot>' +
       '</table></div>' +
-      avisoSesiones(tSes) +
-      '<div class="note">Debajo de cada número está cuánto pesa ese canal <em>dentro de ese ' +
-      'paso</em> — los porcentajes de una columna suman 100. Si un canal pesa 20% al entrar ' +
-      'y 35% al consultar, está rindiendo por encima de su tamaño. La tabla está ordenada por ' +
-      'conversión, no por volumen: un canal chico arriba de todo es una pista de dónde poner ' +
-      'más plata.</div>' +
-      (ins ? '<div class="note"><strong>Los colores del último paso no son los mismos de ' +
+      '</div>';
+
+    nota(avisoDesde());
+    nota(avisoSesiones(tSes));
+    nota('<div class="note"><strong>Cómo se lee el embudo.</strong> Debajo de cada número de ' +
+      'la tabla está cuánto pesa ese canal <em>dentro de ese paso</em> — los porcentajes de ' +
+      'una columna suman 100. Si un canal pesa 20% al entrar y 35% al consultar, está ' +
+      'rindiendo por encima de su tamaño. La tabla va ordenada por conversión, no por ' +
+      'volumen: un canal chico arriba de todo es una pista de dónde poner más plata. ' +
+      '<em>Entraron</em> son sesiones: visitas, no personas — quien entra el lunes y el ' +
+      'viernes cuenta dos veces.</div>');
+    if(ins){
+      nota('<div class="note"><strong>Los colores del último paso no son los mismos de ' +
         'arriba.</strong> Los cuatro primeros escalones usan los canales de Analytics; el de ' +
         'inscriptos usa los de la hoja, que salen del UTM con el que llegó la consulta. Se ' +
         'parecen pero no son iguales: <em>Orgánico</em> ahí junta buscador, directo y ' +
-        'referidos, que arriba van separados. Por eso lleva su propia referencia.</div>' +
-        '<div class="note"><strong>El último paso sí se divide por el anterior.</strong> ' +
+        'referidos, que arriba van separados. Por eso lleva su propia referencia.</div>');
+      nota('<div class="note"><strong>El último paso sí se divide por el anterior.</strong> ' +
         'El inscripto viene de la misma fila que su consulta, así que los dos escalones hablan ' +
         'de la misma gente: de las consultas que entraron en el período elegido, ésas son las ' +
         'que terminaron anotándose. Lo que no se puede es comparar un mes recién cerrado con ' +
         'uno de hace tres: los meses nuevos siguen sumando inscriptos durante meses, y además ' +
-        'la marca de inscripto se carga a mano, sin frecuencia fija.</div>' : '') +
-      '</div>';
+        'la marca de inscripto se carga a mano, sin frecuencia fija.</div>');
+    }
   }
 
   /* ── 2 ── */
