@@ -285,6 +285,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     <div id="p1-embudo"></div>
     <div id="p1-insc"></div>
     <div id="p1-crm"></div>
+    <div id="p1-acum"></div>
     <div class="card">
       <header><div><h2>De dónde vienen las consultas</h2>
         <p class="hint">Cada consulta se atribuye al canal de la sesión en la que se envió el
@@ -570,6 +571,65 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       o[c].inscriptos += Number(r.inscriptos) || 0;
     });
     return o;
+  }
+
+  /* ── El año ────────────────────────────────────────────────────────────
+   * El acumulado se lee siempre contra el año, no contra el período elegido:
+   * es el número que contesta "cómo venimos este año". Si hay un mes elegido,
+   * manda su año; si está en "todo el período", el año más nuevo con datos.
+   */
+  function anioActivo(){
+    if(mes !== 'todo') return mes.slice(0,4);
+    var a = {};
+    (D.consultas_crm||[]).forEach(function(r){ a[String(r.fecha).slice(0,4)] = true; });
+    var k = Object.keys(a).sort();
+    return k.length ? k[k.length-1] : String(new Date().getFullYear());
+  }
+  function inscriptosAnio(a){
+    a = a || anioActivo();
+    return (D.consultas_crm||[]).reduce(function(s,r){
+      return String(r.fecha).slice(0,4) === a ? s + (Number(r.inscriptos)||0) : s; }, 0);
+  }
+  /** Desde qué mes hay datos de ese año. Mientras el backend traiga una ventana
+   *  más corta que el año, el acumulado no puede decir "del año" sin mentir. */
+  function primerMesDelAnio(a){
+    a = a || anioActivo();
+    var min = '';
+    (D.consultas_crm||[]).forEach(function(r){
+      var f = String(r.fecha);
+      if(f.slice(0,4) !== a) return;
+      if(!min || f < min) min = f;
+    });
+    return min ? Number(min.slice(5,7)) : 0;
+  }
+  function acumuladoDesde(){
+    var m = primerMesDelAnio();
+    return (m > 1)
+      ? 'acumulado desde ' + MESN[m] + ', sin importar el mes elegido'
+      : 'acumulado del año, sin importar el mes elegido';
+  }
+  /** Inscriptos mes a mes del año, y su acumulado. Se cuentan por el mes de la
+   *  consulta, que es la única fecha que trae la hoja. */
+  function inscriptosPorMesDelAnio(a){
+    a = a || anioActivo();
+    var porMes = {};
+    (D.consultas_crm||[]).forEach(function(r){
+      var f = String(r.fecha);
+      if(f.slice(0,4) !== a) return;
+      var m = Number(f.slice(5,7));
+      porMes[m] = (porMes[m]||0) + (Number(r.inscriptos)||0);
+    });
+    var ultimo = 0;
+    Object.keys(porMes).forEach(function(m){ if(porMes[m] >= 0 && Number(m) > ultimo) ultimo = Number(m); });
+    // Hasta el último mes con datos, no los doce: una línea plana hasta
+    // diciembre haría ver el año como si ya hubiera terminado.
+    var mensual = [], acum = [], etq = [], suma = 0;
+    for(var i = 1; i <= ultimo; i++){
+      var v = porMes[i] || 0;
+      suma += v;
+      mensual.push(v); acum.push(suma); etq.push(MESN[i]);
+    }
+    return { etq:etq, mensual:mensual, acum:acum, total:suma, anio:a };
   }
 
   /* Los dos meses más nuevos siguen sumando inscriptos: parte de esa gente se
@@ -869,15 +929,11 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       (inscOk() ? tarjeta('','Inscriptos', n(inscriptos()),
               'de las consultas del período' + (tierno() || mes === 'todo' ? ' · ' + AVISO_TIERNO : ''),
               bloqueDelta(inscriptos(), prev?inscriptos(prev):null, 'normal')) : '') +
-      // El costo por inscripto es la pregunta que de verdad importa, y por eso
-      // mismo es la que más fácil se responde mal: el inscripto de este mes no
-      // salió de la plata de este mes. Se muestra igual, pero el subtítulo dice
-      // qué es en realidad — un cociente del período, no un costo de adquisición.
-      (inscOk() ? tarjeta('','Costo por inscripto',
-              inscPagos() ? money(invT/inscPagos()) : '—',
-              inscPagos() ? 'inversión ÷ inscriptos que consultaron en el '+(mes==='todo'?'período':'mes')
-                          : 'ningún inscripto del período vino de un canal pago',
-              bloqueDelta(inscPagos()?invT/inscPagos():0, pCpi, 'inverso')) : '');
+      // El acumulado no mira el período elegido: es el total del año, el número
+      // que contesta "cómo venimos". Cambiás de mes y éste no se mueve; cambiás
+      // de año y se recalcula solo.
+      (inscOk() ? tarjeta('','Inscriptos ' + anioActivo(), n(inscriptosAnio()),
+              acumuladoDesde()) : '');
 
     /* Qué entra y qué no en el costo por consulta. Va escrito siempre, aunque
        no haya nada excluido: el día que alguien prenda una campaña de mensajes,
@@ -898,6 +954,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
 
     p1embudo();
     p1crm();
+    p1acum();
 
     var sc = porClave('canales_sesiones','canal','sesiones');
 
@@ -974,6 +1031,34 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       'Es esperable: son dos informes distintos de Analytics, y abrir las sesiones por canal ' +
       'aplica umbrales que el informe sin abrir no tiene. Mientras la diferencia sea de uno o ' +
       'dos puntos, no hay nada que arreglar. Si un día salta a diez, eso sí es un problema.</div>';
+  }
+
+  /* ══ Cómo crece el año ═════════════════════════════════════════════════
+   * Una sola línea: los inscriptos acumulados del año, mes a mes. Es la curva
+   * que contesta si el ciclo va mejor o peor que el anterior, y no se mueve al
+   * cambiar de mes — el mes elegido filtra todo lo demás, esto no.
+   */
+  function p1acum(){
+    var caja = $('p1-acum');
+    if(!inscOk()){ caja.innerHTML = ''; return; }
+    var a = inscriptosPorMesDelAnio();
+    if(!a.etq.length){ caja.innerHTML = ''; return; }
+
+    D._acum = a;
+    var ultimoMes = a.etq[a.etq.length-1];
+    caja.innerHTML =
+      '<div class="card"><header><div><h2>Inscriptos acumulados · ' + a.anio + '</h2>' +
+      '<p class="hint">Cada mes suma los anteriores. Cada inscripto cuenta en el mes en que ' +
+      'entró su consulta.</p></div>' +
+      '<span class="pill">' + n(a.total) + ' a ' + ultimoMes + '</span></header>' +
+      '<div class="chartbox"><canvas id="c-acum"></canvas></div></div>';
+
+    nota('<div class="note"><strong>El acumulado va por mes de consulta, no de ' +
+      'inscripción.</strong> La hoja de la universidad guarda la fecha en que la persona ' +
+      'consultó y una marca de si se inscribió, pero no el día en que se anotó. Así que la ' +
+      'curva dice "de las consultas que entraron hasta este mes, tantas terminaron ' +
+      'inscribiéndose". Los meses más nuevos van a seguir subiendo: parte de esa gente se ' +
+      'anota más adelante.</div>');
   }
 
   /* ══ Del tráfico al inscripto, canal por canal ═════════════════════════
@@ -1141,6 +1226,15 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
         : t > ant ? 'más que el paso anterior, que está contado de menos'
         : pc(t/ant*100) + ' del paso anterior' +
           (p.pie === 'form_start' && aperturasIncompletas() ? ' · ' + NOTA_APERTURAS : '');
+      // Y además, siempre contra el primer paso. El porcentaje contra el paso
+      // anterior dice dónde se cae la gente; éste dice cuánto queda del total
+      // que entró, que es lo que no se puede reconstruir de memoria cuando los
+      // escalones se encadenan.
+      var base0 = tot(pasos[0].dato);
+      if(ant && base0){
+        derecha += '<span class="sub" style="display:block">' + pc(t/base0*100) +
+                   ' de los que entraron</span>';
+      }
       return '<div class="epaso">' +
         '<span class="enom">'+p.nom+'</span>' +
         '<span class="eval">'+n(t)+'</span>' +
@@ -2010,6 +2104,14 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
 
   function graficos(pagina){
     var t = T();
+    if(pagina === 'p1' && D._acum && D._acum.etq.length){
+      var ac = D._acum;
+      hacer('c-acum', { type:'line', data:{ labels:ac.etq, datasets:[
+        { label:'Acumulado', data:ac.acum, borderColor:cv('--c1'), backgroundColor:cv('--c1'),
+          borderWidth:2, pointRadius:4, pointHoverRadius:7, pointBackgroundColor:cv('--c1'),
+          pointBorderColor:cv('--surface'), pointBorderWidth:2, tension:.25, fill:false } ] },
+        options: base(t) });
+    }
     if(pagina === 'p1'){
       // Analytics devuelve las filas ordenadas por métrica, no por fecha.
       // Sin este sort el eje temporal queda salteado y la línea no significa nada.
