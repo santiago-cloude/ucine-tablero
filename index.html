@@ -133,7 +133,9 @@ h1,h2{margin:0}
 .chartbox{position:relative;height:260px} .chartbox.tall{height:330px}
 .legend{display:flex;gap:15px;flex-wrap:wrap;font-size:12px;color:var(--ink-2)}
 .legend span{display:inline-flex;align-items:center;gap:6px}
-.swatch{width:11px;height:11px;border-radius:3px;flex:none}
+/* inline-block para que también se pueda usar suelto dentro de una celda:
+   como inline puro, el alto y el ancho no se aplican y no se ve nada. */
+.swatch{display:inline-block;vertical-align:middle;width:11px;height:11px;border-radius:3px;flex:none}
 .pill{font-size:11px;font-weight:600;color:var(--muted);background:var(--surface-2);
   border:1px solid var(--hair);border-radius:999px;padding:4px 11px;white-space:nowrap}
 
@@ -267,6 +269,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
   <nav class="lado" id="tabs" aria-label="Secciones">
     <span class="rot">Sección</span>
     <button class="tab" data-p="p1" aria-current="page">Resumen</button>
+    <button class="tab" data-p="pi">Inscripciones</button>
     <button class="tab" data-p="p2">Qué carrera tracciona</button>
     <button class="tab" data-p="p3">Embudo del formulario</button>
     <button class="tab" data-p="p4">Canales de contacto</button>
@@ -314,6 +317,19 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
         <div class="chartbox"><canvas id="c-ses"></canvas></div></div>
     </div>
     <div id="p1-comoleer"></div>
+  </section>
+
+  <!-- inscripciones -->
+  <section class="page" id="pi">
+    <div class="phead"><h1>Inscripciones</h1>
+      <p>Todo lo que se sabe del inscripto, junto: cuántos, de dónde y de qué carrera.</p></div>
+    <div class="kpis" id="ki"></div>
+    <div id="pi-embudo"></div>
+    <div id="pi-canal"></div>
+    <div id="pi-carrera"></div>
+    <div id="pi-campania"></div>
+    <div id="pi-mes"></div>
+    <div id="pi-comoleer"></div>
   </section>
 
   <!-- 2 -->
@@ -867,7 +883,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
            '<span class="estado">· '+t+'</span></span>';
   }
 
-  function render(){ p1(); p2(); p3(); p4(); p5(); p6();
+  function render(){ p1(); pi(); p2(); p3(); p4(); p5(); p6();
     graficos(document.querySelector('.page.on').id); }
 
   /* ── 1 ── */
@@ -993,8 +1009,13 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
    * que se baja es el que convierte mejor, y eso se ve de un vistazo.
    * El número absoluto y el % que sigue van al lado, en texto.
    */
+  /* "Derivación de WhatsApp" es un canal propio del grupo "Canales UCINE" de
+     Analytics, no uno de los canales estándar. Lleva el mismo color que en la
+     paleta de la hoja, para que el embudo se lea de arriba abajo sin cambiar
+     de código de color en el último paso; por eso Referral se corre a --s-b. */
   var COLOR_EMBUDO = { 'Organic Search':'--c1', 'Direct':'--c2', 'Organic Social':'--c3',
-                       'Referral':'--c4', 'Paid Search':'--c5', 'Paid Social':'--s-c' };
+                       'Derivación de WhatsApp':'--c4', 'Referral':'--s-b',
+                       'Paid Search':'--c5', 'Paid Social':'--s-c' };
   /* El último paso tiene su propia paleta porque tiene su propio vocabulario:
      los cuatro primeros usan los canales de Analytics y éste los de la hoja.
      Los colores se eligen para que se lean en continuidad — amarillo sigue
@@ -1010,7 +1031,8 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
   /* Tinta del número dentro de cada segmento. No es capricho: sobre el amarillo
      y el rosa, el blanco no se lee. */
   var TINTA_EMBUDO = { 'Organic Search':'#fff', 'Direct':'#fff', 'Organic Social':'#05291c',
-                       'Referral':'#fff', 'Paid Search':'#2b1d00', 'Paid Social':'#40101f',
+                       'Derivación de WhatsApp':'#fff', 'Referral':'#fff',
+                       'Paid Search':'#2b1d00', 'Paid Social':'#40101f',
                        'Otros':'#1e232b' };
 
   /**
@@ -1335,6 +1357,402 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
         'que terminaron anotándose. Lo que no se puede es comparar un mes recién cerrado con ' +
         'uno de hace tres: los meses nuevos siguen sumando inscriptos durante meses, y además ' +
         'la marca de inscripto se carga a mano, sin frecuencia fija.</div>');
+    }
+  }
+
+  /* ══ INSCRIPCIONES ═════════════════════════════════════════════════════
+   * El inscripto estaba repartido en cuatro páginas y en ninguna era el tema.
+   * Acá es el único tema, y se mira con un solo vocabulario de canales: el de
+   * la hoja de la universidad. Las sesiones se agrupan con ese mismo criterio
+   * — por eso salen del informe de UTM y no del de canales de Analytics — así
+   * los tres escalones del embudo hablan el mismo idioma de punta a punta.
+   * Nada de esto se saca de las otras secciones: esto resume, no reemplaza.
+   */
+
+  /** Suma consultas e inscriptos de la hoja agrupando por una columna. */
+  function crmPor(campo, m){
+    var o = {};
+    filtrar('consultas_crm', m).forEach(function(r){
+      var k = String(r[campo] || '').trim();
+      if(!o[k]) o[k] = { consultas:0, inscriptos:0, canales:{} };
+      o[k].consultas  += Number(r.consultas)  || 0;
+      o[k].inscriptos += Number(r.inscriptos) || 0;
+      if(r.canal) o[k].canales[r.canal] = true;
+    });
+    return o;
+  }
+
+  /** Consultas e inscriptos mes a mes del año activo, con el acumulado. */
+  function crmPorMesDelAnio(a){
+    a = a || anioActivo();
+    var m = {}, ultimo = 0;
+    (D.consultas_crm||[]).forEach(function(r){
+      var f = String(r.fecha);
+      if(f.slice(0,4) !== a) return;
+      var k = Number(f.slice(5,7));
+      if(!m[k]) m[k] = { consultas:0, inscriptos:0 };
+      m[k].consultas  += Number(r.consultas)  || 0;
+      m[k].inscriptos += Number(r.inscriptos) || 0;
+      if(k > ultimo) ultimo = k;
+    });
+    // Arranca en el primer mes con algo. Un enero vacío dibujado como cero
+    // haría ver el año como si hubiera empezado mal, cuando lo que pasa es que
+    // todavía no hay datos de ese mes.
+    var primero = 1;
+    while(primero <= ultimo && !m[primero]) primero++;
+    var filas = [], acum = 0;
+    for(var i = primero; i <= ultimo; i++){
+      var v = m[i] || { consultas:0, inscriptos:0 };
+      acum += v.inscriptos;
+      filas.push({ etq:MESN[i], consultas:v.consultas, inscriptos:v.inscriptos, acum:acum });
+    }
+    return { filas:filas, anio:a, total:acum };
+  }
+
+  /** Orden fijo de canales: primero los que tienen color propio, en el orden de
+   *  la paleta, después el resto, y "Otro" al final porque es un cajón. */
+  function ordenCrm(claves){
+    var propios = Object.keys(COLOR_CRM).filter(function(c){ return claves.indexOf(c) >= 0; });
+    var resto = claves.filter(function(c){ return propios.indexOf(c) < 0 && c !== 'Otro'; }).sort();
+    return propios.concat(resto).concat(claves.indexOf('Otro') >= 0 ? ['Otro'] : []);
+  }
+  function colorCrm(c){ return COLOR_CRM[c] ? 'var('+COLOR_CRM[c]+')' : GRIS_OTROS; }
+
+  function pi(){
+    NOTAS = [];
+    var cajas = ['pi-embudo','pi-canal','pi-carrera','pi-campania','pi-mes'];
+
+    if(!inscOk()){
+      $('ki').innerHTML = '';
+      cajas.forEach(function(id){ $(id).innerHTML = ''; });
+      $('pi-embudo').innerHTML = vacio('La hoja de la universidad no está conectada',
+        'Esta sección entera sale de ahí: las consultas, los inscriptos, la carrera y el ' +
+        'canal de cada uno. Mientras no llegue, no hay nada que resumir.');
+      comoleer('pi-comoleer');
+      return;
+    }
+
+    var crm  = crmPorCanal();
+    var ins  = inscriptos(), cons = consultasCrm();
+    var prev = mesAnterior();
+    var pIns = prev ? inscriptos(prev) : null;
+    var pCons = prev ? consultasCrm(prev) : null;
+
+    var pago = 0, libre = 0;
+    Object.keys(crm).forEach(function(c){
+      if(esPagoCrm(c)) pago += crm[c].inscriptos; else libre += crm[c].inscriptos;
+    });
+
+    var etq = mes === 'todo' ? 'período completo'
+            : MESN[Number(mes.slice(5,7))] + ' ' + mes.slice(0,4);
+    var joven = tierno() || mes === 'todo';
+
+    $('ki').innerHTML =
+      tarjeta('hero','Inscriptos — '+etq, n(ins),
+              'contados en el mes de su consulta' + (joven ? ' · ' + AVISO_TIERNO : ''),
+              bloqueDelta(ins, pIns, 'normal')) +
+      // El acumulado no mira el período elegido: cambiás de mes y no se mueve.
+      tarjeta('','Inscriptos ' + anioActivo(), n(inscriptosAnio()), acumuladoDesde()) +
+      tarjeta('','Cierre', cons ? pc(ins/cons*100) : '—',
+              'de las consultas llegaron a inscribirse',
+              bloqueDelta(cons ? ins/cons*100 : 0,
+                          (pCons ? pIns/pCons*100 : null), 'normal')) +
+      tarjeta('','Consultas', n(cons), 'las que pueden terminar en inscripción',
+              bloqueDelta(cons, pCons, 'normal')) +
+      tarjeta('','Sin publicidad', n(libre),
+              ins ? Math.round(libre/ins*100)+'% de los inscriptos' : '—') +
+      tarjeta('','De publicidad', n(pago),
+              ins ? Math.round(pago/ins*100)+'% de los inscriptos' : '—');
+
+    piEmbudo(crm);
+    piCanal(crm, ins);
+    piCarrera();
+    piCampania();
+    piMes();
+
+    if(joven){
+      nota('<div class="note"><strong>Los meses más nuevos siempre están incompletos.</strong> ' +
+        'Por dos razones que se suman: parte de esa gente se anota más adelante, y la marca de ' +
+        'inscripto la carga alguien a mano, sin una frecuencia fija. Un mes recién cerrado no se ' +
+        'puede comparar de igual a igual con uno de hace tres.</div>');
+    }
+    nota('<div class="note"><strong>Qué es un inscripto acá.</strong> Una fila de la hoja de la ' +
+      'universidad que tiene la marca de inscripción puesta. Cuenta en el mes en que esa persona ' +
+      '<em>consultó</em>, no en el mes en que se anotó: la hoja guarda la fecha de la consulta y ' +
+      'un sí/no, pero no el día de la inscripción. Por eso el cierre es una tasa de verdad — las ' +
+      'dos puntas hablan de la misma gente — y por eso el mes de arriba no para de subir.</div>');
+    comoleer('pi-comoleer');
+  }
+
+  /* ══ El embudo de la inscripción ════════════════════════════════════════
+   * Tres escalones y un solo vocabulario. El embudo del Resumen tiene dos
+   * pasos más — abrieron, apretaron enviar — pero ésos sólo existen con los
+   * canales de Analytics, y mezclar los dos idiomas es justamente lo que hace
+   * que el último escalón de allá necesite su propia referencia. Acá se pierde
+   * detalle del formulario y se gana que las tres barras se puedan comparar.
+   */
+  function piEmbudo(crm){
+    var ses = sesionesPorCanalPropio();
+    var qq = {}, ii = {};
+    Object.keys(crm).forEach(function(c){
+      qq[c] = crm[c].consultas; ii[c] = crm[c].inscriptos;
+    });
+
+    var tot = function(o){ return Object.keys(o).reduce(function(s,k){ return s+(o[k]||0); },0); };
+    if(!tot(qq)){
+      $('pi-embudo').innerHTML = vacio('Sin consultas en este período',
+        'La hoja está conectada, pero no tiene filas para estas fechas.');
+      return;
+    }
+
+    var pasos = [];
+    if(tot(ses)) pasos.push({ nom:'Entraron al sitio', dato:ses, pie:'de los que entraron' });
+    pasos.push({ nom:'Dejaron la consulta', dato:qq });
+    pasos.push({ nom:'Se inscribieron',     dato:ii });
+
+    var claves = {};
+    pasos.forEach(function(p){ Object.keys(p.dato).forEach(function(c){ claves[c] = true; }); });
+    var orden = ordenCrm(Object.keys(claves));
+    var base0 = tot(pasos[0].dato);
+
+    var filas = pasos.map(function(p,i){
+      var t = tot(p.dato);
+      var ant = i ? tot(pasos[i-1].dato) : null;
+      var seg = orden.map(function(c){
+          return { nom:c, v:p.dato[c]||0, color:colorCrm(c), tinta:TINTA_CRM[c] || '#1e232b' }; })
+        .filter(function(s){ return s.v > 0; });
+
+      var ancho = pasos.length > 1 ? 100 - i * (60 / (pasos.length - 1)) : 100;
+      var derecha = !ant ? 'punto de partida'
+        : (i === 1 && pasos[0].pie) ? pc(t/ant*100) + ' de los que entraron'
+        : pc(t/ant*100) + ' del paso anterior';
+      if(ant && base0 && i > 1){
+        derecha += '<span class="sub" style="display:block">' + pc(t/base0*100) +
+                   ' de los que entraron</span>';
+      }
+
+      return '<div class="epaso">' +
+        '<span class="enom">'+p.nom+'</span>' +
+        '<span class="eval">'+n(t)+'</span>' +
+        '<div class="epista" style="width:'+ancho.toFixed(2)+'%">' +
+          seg.map(function(s){
+            var q = t ? s.v/t*100 : 0;
+            var e = q * ancho / 100 >= 9 ? Math.round(q)+'%' : '';
+            if(seg.length === 1) e = s.nom;
+            else if(q * ancho / 100 >= 20) e = s.nom + ' · ' + Math.round(q) + '%';
+            return '<span class="eseg" style="width:'+q.toFixed(2)+'%;background:'+s.color+
+              ';color:'+s.tinta+'" title="'+s.nom+': '+n(s.v)+' · '+nf1.format(q)+
+              '% del paso">'+e+'</span>';
+          }).join('') +
+        '</div>' +
+        '<span class="esig">'+derecha+'</span></div>';
+    }).join('');
+
+    var leyenda = orden.filter(function(c){ return ii[c] || qq[c] || ses[c]; })
+      .map(function(c){
+        return '<span><i class="swatch" style="background:'+colorCrm(c)+'"></i>'+c+'</span>'; })
+      .join('');
+
+    $('pi-embudo').innerHTML =
+      '<div class="card"><header><div><h2>El embudo de la inscripción</h2>' +
+      '<p class="hint">Las barras comparan la mezcla de canales, no el volumen: el canal que se ' +
+      'agranda al bajar es el que mejor termina cerrando.</p></div>' +
+      '<div class="legend">'+leyenda+'</div></header>' +
+      '<div class="embudom">'+filas+'</div></div>';
+
+    if(!tot(ses)){
+      nota('<div class="note"><strong>El embudo arranca en las consultas, no en el ' +
+        'tráfico.</strong> Para repartir las sesiones con los mismos nombres de canal hace falta ' +
+        'el informe de UTM, que no tiene filas para estas fechas. Las consultas y los inscriptos ' +
+        'no se ven afectados.</div>');
+    } else {
+      nota('<div class="note"><strong>Acá los tres escalones hablan el mismo idioma.</strong> ' +
+        'En el embudo del Resumen los primeros pasos usan los canales de Analytics y el último ' +
+        'los de la hoja, por eso lleva dos referencias. Este embudo agrupa las sesiones con el ' +
+        'mismo criterio que la hoja — <em>Orgánico</em> junta buscador, directo y referidos — ' +
+        'así las tres barras se pueden comparar de arriba abajo. Lo que se pierde son los pasos ' +
+        'de "abrieron" y "apretaron enviar", que sólo existen con los canales de Analytics: ' +
+        'ésos están en el Resumen y en Embudo del formulario.</div>');
+      var cob = sumar('dias','sesiones');
+      if(cob && Math.abs(tot(ses)-cob)/cob*100 >= 5){
+        nota('<div class="note"><strong>Las sesiones de este embudo no coinciden con las del ' +
+          'Resumen: ' + n(tot(ses)) + ' contra ' + n(cob) + '.</strong> El informe de UTM que ' +
+          'alimenta este reparto va por mes y cubre los últimos 90 días; la hoja de consultas ' +
+          'llega hasta enero. Si estás mirando todo el período, el primer escalón se queda ' +
+          'corto y el porcentaje de cierre contra el tráfico sale mejor de lo que es. Mes a mes ' +
+          'cierra bien.</div>');
+      }
+    }
+  }
+
+  /* ══ De dónde salieron ═════════════════════════════════════════════════ */
+  function piCanal(crm, ins){
+    var ses = sesionesPorCanalPropio();
+    // Entran también los canales que trajeron tráfico y ninguna consulta: que
+    // un canal no cierre es justamente lo que hay que poder ver, y además así
+    // el total de sesiones de la tabla cierra con el del embudo de arriba.
+    var claves = Object.keys(crm);
+    Object.keys(ses).forEach(function(c){ if(claves.indexOf(c) < 0) claves.push(c); });
+    claves = ordenCrm(claves);
+
+    var datos = claves.map(function(c){
+      var q = (crm[c]||{}).consultas || 0, i = (crm[c]||{}).inscriptos || 0;
+      return { c:c, s:ses[c]||0, q:q, i:i, cierre: q ? i/q*100 : 0,
+               peso: ins ? i/ins*100 : 0 };
+    });
+
+    // Ordenada por inscriptos, no por consultas: la pregunta de esta página es
+    // quién trae inscriptos, no quién trae volumen.
+    var tabla = datos.slice().sort(function(a,b){ return b.i-a.i || b.q-a.q; });
+    var mejor = Math.max.apply(null, datos.map(function(r){ return r.cierre; }).concat([0]));
+
+    var tq = 0, ti = 0, ts = 0;
+    datos.forEach(function(r){ tq += r.q; ti += r.i; ts += r.s; });
+
+    $('pi-canal').innerHTML =
+      '<div class="card"><header><div><h2>De dónde salieron los inscriptos</h2>' +
+      '<p class="hint">El canal es el del UTM con el que llegó la consulta de esa persona. ' +
+      'Quien llegó sin etiqueta cuenta como Orgánico.</p></div>' +
+      '<span class="pill">'+n(ti)+' de '+n(tq)+' consultas</span></header>' +
+      '<div class="tw"><table><thead><tr><th>Canal</th>' +
+      '<th>Sesiones</th><th>Consultas</th><th>Inscriptos</th><th>Peso</th>' +
+      '<th>Cierre</th></tr></thead><tbody>' +
+      tabla.map(function(r){
+        // El cuadradito de color es el mismo del embudo de arriba: deja saltar
+        // de una banda a su fila sin tener que leer el nombre dos veces.
+        return '<tr><td><i class="swatch" style="background:'+colorCrm(r.c)+'"></i> '+r.c+
+          (esPagoCrm(r.c)?' <span class="sub">pago</span>':'')+'</td>' +
+          '<td>'+(r.s ? n(r.s) : '—')+'</td><td>'+n(r.q)+'</td><td>'+n(r.i)+'</td>' +
+          '<td>'+(ti ? pc(r.peso) : '—')+'</td>' +
+          '<td>'+(r.q ? pc(r.cierre) : '—')+'<div class="bartrack"><span class="bar" style="width:'+
+          (mejor ? Math.min(r.cierre/mejor*100,100) : 0).toFixed(1)+'%"></span></div></td></tr>';
+      }).join('') +
+      '</tbody><tfoot><tr><td>Total</td><td>'+(ts?n(ts):'—')+'</td><td>'+n(tq)+'</td>' +
+      '<td>'+n(ti)+'</td><td>'+(ti?'100,0%':'—')+'</td>' +
+      '<td>'+(tq?pc(ti/tq*100):'—')+'</td></tr></tfoot></table></div></div>';
+
+    nota('<div class="note"><strong>Peso y cierre contestan cosas distintas.</strong> El peso ' +
+      'dice cuántos de los inscriptos trajo ese canal; el cierre, qué porcentaje de sus ' +
+      'consultas terminó anotándose. Un canal puede traer pocos inscriptos y tener el mejor ' +
+      'cierre: ése es el que conviene agrandar. Y al revés, uno que trae muchas consultas con ' +
+      'un cierre bajo está juntando gente que no termina entrando.</div>');
+  }
+
+  /* ══ Por carrera ═══════════════════════════════════════════════════════ */
+  function piCarrera(){
+    var por = crmPor('carrera');
+    var filas = Object.keys(por).map(function(k){
+      var v = por[k];
+      return { k:k || 'Sin especificar', q:v.consultas, i:v.inscriptos,
+               cierre: v.consultas ? v.inscriptos/v.consultas*100 : 0 };
+    }).sort(function(a,b){ return b.i-a.i || b.q-a.q; });
+
+    if(!filas.length){ $('pi-carrera').innerHTML = ''; return; }
+
+    var conIns = filas.filter(function(r){ return r.i > 0; }).length;
+    var mejor = Math.max.apply(null, filas.map(function(r){ return r.cierre; }).concat([0]));
+
+    // Se muestran todas las que tienen inscriptos, y de las que no, sólo las
+    // que juntaron consultas suficientes como para que el cero signifique algo.
+    var ver = filas.filter(function(r){ return r.i > 0 || r.q >= 10; });
+
+    $('pi-carrera').innerHTML =
+      '<div class="card"><header><div><h2>Qué carrera cierra</h2>' +
+      '<p class="hint">La carrera es la que la persona eligió en el formulario. Abajo de la ' +
+      'línea están las que juntan consultas y todavía no cerraron ninguna.</p></div>' +
+      '<span class="pill">'+conIns+(conIns === 1 ? ' carrera con inscriptos' : ' carreras con inscriptos')+'</span></header>' +
+      '<div class="tw"><table><thead><tr><th>Carrera</th><th>Consultas</th>' +
+      '<th>Inscriptos</th><th>Cierre</th></tr></thead><tbody>' +
+      ver.map(function(r){
+        return '<tr><td>'+r.k+'</td><td>'+n(r.q)+'</td><td>'+n(r.i)+'</td>' +
+          '<td>'+(r.q ? pc(r.cierre) : '—')+'<div class="bartrack"><span class="bar" style="width:'+
+          (mejor ? Math.min(r.cierre/mejor*100,100) : 0).toFixed(1)+'%"></span></div></td></tr>';
+      }).join('') + '</tbody></table></div></div>';
+
+    if(ver.length < filas.length){
+      nota('<div class="note"><strong>La tabla de carreras no las lista todas.</strong> Entran ' +
+        'las que tienen al menos un inscripto y las que juntaron diez consultas o más. Una ' +
+        'carrera con dos consultas y ningún inscripto no dice nada todavía, y llenaría la tabla ' +
+        'de ceros que no se pueden leer.</div>');
+    }
+  }
+
+  /* ══ Por campaña ═══════════════════════════════════════════════════════ */
+  function piCampania(){
+    var por = crmPor('campania');
+    var filas = Object.keys(por).filter(function(k){ return k; }).map(function(k){
+      var v = por[k];
+      return { k:k, q:v.consultas, i:v.inscriptos,
+               canal: Object.keys(v.canales).join(' · '),
+               cierre: v.consultas ? v.inscriptos/v.consultas*100 : 0 };
+    }).sort(function(a,b){ return b.i-a.i || b.q-a.q; });
+
+    var sinCamp = por[''] ? por[''].inscriptos : 0;
+
+    if(!filas.length){
+      $('pi-campania').innerHTML = vacio('Todavía no hay inscriptos con campaña identificada',
+        'La campaña llega en el UTM de la consulta. Las consultas que entran sin etiqueta no ' +
+        'tienen campaña: son las que acá figuran como orgánicas.');
+      return;
+    }
+
+    var mejor = Math.max.apply(null, filas.map(function(r){ return r.cierre; }).concat([0]));
+
+    $('pi-campania').innerHTML =
+      '<div class="card"><header><div><h2>Qué campaña trajo inscriptos</h2>' +
+      '<p class="hint">Sólo las consultas que llegaron con campaña en el UTM. El resto ' +
+      '(' + n(sinCamp) + ' inscriptos) entró sin etiqueta y no se le puede poner nombre.</p></div>' +
+      '</header>' +
+      '<div class="tw"><table><thead><tr><th>Campaña</th><th>Canal</th><th>Consultas</th>' +
+      '<th>Inscriptos</th><th>Cierre</th></tr></thead><tbody>' +
+      filas.map(function(r){
+        return '<tr><td>'+r.k+'</td><td class="sub">'+(r.canal||'—')+'</td><td>'+n(r.q)+'</td>' +
+          '<td>'+n(r.i)+'</td>' +
+          '<td>'+(r.q ? pc(r.cierre) : '—')+'<div class="bartrack"><span class="bar" style="width:'+
+          (mejor ? Math.min(r.cierre/mejor*100,100) : 0).toFixed(1)+'%"></span></div></td></tr>';
+      }).join('') + '</tbody></table></div></div>';
+
+    nota('<div class="note"><strong>Esta tabla es incompleta del lado de Meta, y conviene ' +
+      'saberlo antes de sacar conclusiones.</strong> El sitio guarda el UTM que trae la URL en ' +
+      'el momento de enviar el formulario: si la persona llega al home por un anuncio y recién ' +
+      'después busca la carrera, la etiqueta se pierde y esa consulta termina contada como ' +
+      'orgánica. A Google Ads casi no le pasa, porque el link va directo a la página de la ' +
+      'carrera. Así que una campaña de Meta con pocos inscriptos acá puede estar trayendo más ' +
+      'de los que se ven.</div>');
+  }
+
+  /* ══ Mes a mes ═════════════════════════════════════════════════════════ */
+  function piMes(){
+    var a = crmPorMesDelAnio();
+    if(!a.filas.length){ $('pi-mes').innerHTML = ''; return; }
+    D._iMes = a;
+
+    var tiernos = mesesTiernos().map(function(m){ return MESN[Number(m.slice(5,7))]; });
+
+    $('pi-mes').innerHTML =
+      '<div class="card"><header><div><h2>Cómo viene el año · ' + a.anio + '</h2>' +
+      '<p class="hint">Las barras son los inscriptos de cada mes; la línea, el acumulado. ' +
+      'No se mueve al cambiar el período de arriba.</p></div>' +
+      '<span class="pill">'+n(a.total)+' en el año</span></header>' +
+      '<div class="chartbox"><canvas id="c-i-mes"></canvas></div>' +
+      '<div class="tw" style="margin-top:14px"><table><thead><tr><th>Mes</th><th>Consultas</th>' +
+      '<th>Inscriptos</th><th>Cierre</th><th>Acumulado</th></tr></thead><tbody>' +
+      a.filas.map(function(r){
+        var sinMarcas = r.i === 0 && r.q >= 30;
+        return '<tr><td>'+r.etq+
+          (tiernos.indexOf(r.etq) >= 0 ? ' <span class="sub">'+AVISO_TIERNO+'</span>' : '')+'</td>' +
+          '<td>'+n(r.consultas)+'</td><td>'+n(r.inscriptos)+
+          (sinMarcas ? '<div class="sub">sin marcas</div>' : '')+'</td>' +
+          '<td>'+(r.consultas ? pc(r.inscriptos/r.consultas*100) : '—')+'</td>' +
+          '<td>'+n(r.acum)+'</td></tr>';
+      }).join('') + '</tbody></table></div></div>';
+
+    if(a.filas.some(function(r){ return r.inscriptos === 0 && r.consultas >= 30; })){
+      nota('<div class="note"><strong>Hay meses con muchas consultas y ningún inscripto ' +
+        'marcado.</strong> Van señalados como <em>sin marcas</em>. Lo más probable no es que no ' +
+        'se haya inscripto nadie, sino que para ese período la columna de inscripción todavía no ' +
+        'se estuviera completando. Conviene preguntarle a la universidad desde cuándo la cargan ' +
+        'antes de leer esos meses como un año que arrancó mal.</div>');
     }
   }
 
@@ -2159,6 +2577,23 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
                    y:{ grid:{display:false}, border:{color:t.axis},
                        ticks:{color:t.ink2,font:{size:12},autoSkip:false} } } }) });
     }
+    if(pagina === 'pi' && D._iMes && D._iMes.filas.length){
+      var im = D._iMes;
+      // Un solo eje para las dos series: son la misma unidad, inscriptos. Con
+      // dos escalas la línea del acumulado puede quedar dibujada por debajo de
+      // una barra que vale lo mismo, y eso es directamente mentir.
+      hacer('c-i-mes', { type:'bar', data:{ labels:im.filas.map(function(r){ return r.etq; }),
+        datasets:[
+          { label:'Inscriptos del mes', data:im.filas.map(function(r){ return r.inscriptos; }),
+            backgroundColor:cv('--c1'), borderRadius:4, borderSkipped:false,
+            barPercentage:.7, order:2 },
+          { label:'Acumulado del año', type:'line', data:im.filas.map(function(r){ return r.acum; }),
+            borderColor:cv('--c5'), backgroundColor:cv('--c5'), borderWidth:2,
+            pointRadius:3, pointHoverRadius:6, pointBackgroundColor:cv('--c5'),
+            pointBorderColor:cv('--surface'), pointBorderWidth:2, tension:.25, fill:false,
+            order:1 } ] },
+        options: conLeyenda(base(t)) });
+    }
     if(pagina === 'p4' && D._contacto && D._contacto.length){
       hacer('c-cont', { type:'bar', data:{ labels:D._contacto.map(function(c){ return c[0]; }),
         datasets:[{ data:D._contacto.map(function(c){ return c[1]; }), backgroundColor:t.b,
@@ -2189,7 +2624,8 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
   /* Canales con color fijo. El color sigue al canal, no a su puesto en el
      ranking: si un mes cae uno, los demás no cambian de color. */
   var COLOR_CANAL = { 'Organic Search':'--c1', 'Direct':'--c2',
-                      'Organic Social':'--c3', 'Referral':'--c4' };
+                      'Organic Social':'--c3', 'Derivación de WhatsApp':'--c4',
+                      'Referral':'--s-b' };
 
   function seriesCanal(fechas){
     var porCanal = {}, pago = {};
@@ -2202,8 +2638,10 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     var total = function(o){ return Object.keys(o).reduce(function(s,k){ return s+o[k]; },0); };
     var nombres = Object.keys(porCanal).sort(function(a,b){ return total(porCanal[b])-total(porCanal[a]); });
 
-    // Con color fijo sólo entran los cuatro canales conocidos; el resto se
-    // pliega en "Otros". Un quinto color inventado rompería la validación.
+    // Con color fijo entran los cuatro canales conocidos de mayor volumen; el
+    // resto se pliega en "Otros". Un quinto color inventado rompería la
+    // validación, así que la lista tiene más nombres que lugares y el corte lo
+    // decide el volumen del mes.
     var propios = nombres.filter(function(c){ return COLOR_CANAL[c]; }).slice(0,4);
     var resto   = nombres.filter(function(c){ return propios.indexOf(c) === -1; });
 
