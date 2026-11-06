@@ -1415,6 +1415,89 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
 
   /** Orden fijo de canales: primero los que tienen color propio, en el orden de
    *  la paleta, después el resto, y "Otro" al final porque es un cajón. */
+  /** Un número con el porcentaje del paso anterior debajo. Si la base no existe,
+   *  o si el número es más grande que ella, dice "—": un porcentaje mayor a 100
+   *  no significa que el canal convierta de más, significa que las dos cifras
+   *  salen de universos distintos, y mostrarlo sólo confunde. */
+  function celdaPaso(v, base){
+    var ok = base > 0 && v <= base;
+    return '<td>'+n(v)+'<div class="sub">'+(ok ? pc(v/base*100) : '—')+'</div></td>';
+  }
+
+  /* La misma tabla para canal, carrera y campaña: sesiones → consultas →
+     inscriptos, cada número con el porcentaje del paso anterior debajo, y el
+     peso sobre el total de inscriptos al final. Es una sola función a propósito:
+     si las tres se leen igual, no hay que volver a aprender a leerlas en cada
+     bloque. Lo que antes era la columna "Cierre" ahora es el porcentaje debajo
+     de Inscriptos, que es donde se entiende sin explicación. */
+  var PIE_TABLA = 'Debajo de cada número, qué porcentaje del paso anterior ' +
+    'representa: las consultas sobre las sesiones, y los inscriptos sobre las ' +
+    'consultas — eso último es el cierre. El peso es cuántos de todos los ' +
+    'inscriptos trajo esa fila.';
+
+  function tablaPasos(col, filas, totalIns){
+    var ts = 0, tq = 0, ti = 0;
+    filas.forEach(function(r){ ts += r.s; tq += r.q; ti += r.i; });
+    var mejor = filas.reduce(function(x,r){
+      return Math.max(x, totalIns ? r.i/totalIns*100 : 0); }, 0);
+
+    return '<div class="tw"><table><thead><tr><th>'+col+'</th><th>Sesiones</th>' +
+      '<th>Consultas</th><th>Inscriptos</th><th>Peso</th></tr></thead><tbody>' +
+      filas.map(function(r){
+        var peso = totalIns ? r.i/totalIns*100 : 0;
+        return '<tr><td>'+r.nom+'</td>' +
+          '<td>'+(r.s ? n(r.s) : '—')+'</td>' +
+          celdaPaso(r.q, r.s) + celdaPaso(r.i, r.q) +
+          '<td>'+(totalIns ? pc(peso) : '—')+'<div class="bartrack"><span class="bar" ' +
+          'style="width:'+(mejor ? Math.min(peso/mejor*100,100) : 0).toFixed(1)+
+          '%"></span></div></td></tr>';
+      }).join('') +
+      '</tbody><tfoot><tr><td>Total</td><td>'+(ts ? n(ts) : '—')+'</td>' +
+      celdaPaso(tq, ts) + celdaPaso(ti, tq) +
+      '<td>'+(ti ? '100,0%' : '—')+'</td></tr></tfoot></table></div>';
+  }
+
+  /** Sesiones de las páginas de cada carrera, unidas por el nombre
+   *  normalizado, igual que en "Qué carrera tracciona". No es el mismo universo
+   *  que las consultas: alguien puede consultar sin pasar por la página de la
+   *  carrera, y al revés. */
+  function sesionesPorCarrera(nombres){
+    var o = {}, agr = {};
+    filtrar('paginas_carrera').forEach(function(r){
+      agr[r.ruta] = (agr[r.ruta]||0) + (Number(r.sesiones)||0);
+    });
+    var orden = nombres.slice().sort(function(a,b){ return clave(b).length - clave(a).length; });
+    Object.keys(agr).forEach(function(ruta){
+      var k = clave(ruta);
+      for(var i=0;i<orden.length;i++){
+        if(k.indexOf(clave(orden[i])) >= 0){
+          o[clave(orden[i])] = (o[clave(orden[i])]||0) + agr[ruta];
+          break;
+        }
+      }
+    });
+    return o;
+  }
+
+  /** Sesiones por campaña. Google Ads manda el ID en el UTM, así que se traduce
+   *  con la tabla de Analytics antes de comparar, que es lo mismo que hace el
+   *  backend con la hoja: si no, el mismo aviso aparecería con dos nombres. */
+  function sesionesPorCampania(){
+    var mapa = {};
+    (D.google_ads||[]).forEach(function(r){
+      var id = String(r.campania_id||'').trim(), nom = String(r.campania||'').trim();
+      if(id && nom && nom !== '(not set)') mapa[id] = nom;
+    });
+    var o = {};
+    filtrar('utm_sesiones').forEach(function(r){
+      var c = String(r.campania_utm||'').trim();
+      if(!c || /^\(.*\)$/.test(c) || /^\{.*\}$/.test(c)) return;
+      if(/^\d+$/.test(c) && mapa[c]) c = mapa[c];
+      o[norm(c)] = (o[norm(c)]||0) + (Number(r.sesiones)||0);
+    });
+    return o;
+  }
+
   function ordenCrm(claves){
     var propios = Object.keys(COLOR_CRM).filter(function(c){ return claves.indexOf(c) >= 0; });
     var resto = claves.filter(function(c){ return propios.indexOf(c) < 0 && c !== 'Otro'; }).sort();
@@ -1612,38 +1695,27 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     // Ordenada por inscriptos, no por consultas: la pregunta de esta página es
     // quién trae inscriptos, no quién trae volumen.
     var tabla = datos.slice().sort(function(a,b){ return b.i-a.i || b.q-a.q; });
-    var mejor = Math.max.apply(null, datos.map(function(r){ return r.cierre; }).concat([0]));
-
-    var tq = 0, ti = 0, ts = 0;
-    datos.forEach(function(r){ tq += r.q; ti += r.i; ts += r.s; });
+    var tq = 0, ti = 0;
+    datos.forEach(function(r){ tq += r.q; ti += r.i; });
 
     $('pi-canal').innerHTML =
       '<div class="card"><header><div><h2>De dónde salieron los inscriptos</h2>' +
       '<p class="hint">El canal es el del UTM con el que llegó la consulta de esa persona. ' +
-      'Quien llegó sin etiqueta cuenta como Orgánico.</p></div>' +
+      'Quien llegó sin etiqueta cuenta como Orgánico. ' + PIE_TABLA + '</p></div>' +
       '<span class="pill">'+n(ti)+' de '+n(tq)+' consultas</span></header>' +
-      '<div class="tw"><table><thead><tr><th>Canal</th>' +
-      '<th>Sesiones</th><th>Consultas</th><th>Inscriptos</th><th>Peso</th>' +
-      '<th>Cierre</th></tr></thead><tbody>' +
-      tabla.map(function(r){
+      tablaPasos('Canal', tabla.map(function(r){
         // El cuadradito de color es el mismo del embudo de arriba: deja saltar
         // de una banda a su fila sin tener que leer el nombre dos veces.
-        return '<tr><td><i class="swatch" style="background:'+colorCrm(r.c)+'"></i> '+r.c+
-          (esPagoCrm(r.c)?' <span class="sub">pago</span>':'')+'</td>' +
-          '<td>'+(r.s ? n(r.s) : '—')+'</td><td>'+n(r.q)+'</td><td>'+n(r.i)+'</td>' +
-          '<td>'+(ti ? pc(r.peso) : '—')+'</td>' +
-          '<td>'+(r.q ? pc(r.cierre) : '—')+'<div class="bartrack"><span class="bar" style="width:'+
-          (mejor ? Math.min(r.cierre/mejor*100,100) : 0).toFixed(1)+'%"></span></div></td></tr>';
-      }).join('') +
-      '</tbody><tfoot><tr><td>Total</td><td>'+(ts?n(ts):'—')+'</td><td>'+n(tq)+'</td>' +
-      '<td>'+n(ti)+'</td><td>'+(ti?'100,0%':'—')+'</td>' +
-      '<td>'+(tq?pc(ti/tq*100):'—')+'</td></tr></tfoot></table></div></div>';
+        return { nom:'<i class="swatch" style="background:'+colorCrm(r.c)+'"></i> '+r.c+
+                     (esPagoCrm(r.c)?' <span class="sub">pago</span>':''),
+                 s:r.s, q:r.q, i:r.i };
+      }), ti) + '</div>';
 
     nota('<div class="note"><strong>Peso y cierre contestan cosas distintas.</strong> El peso ' +
-      'dice cuántos de los inscriptos trajo ese canal; el cierre, qué porcentaje de sus ' +
-      'consultas terminó anotándose. Un canal puede traer pocos inscriptos y tener el mejor ' +
-      'cierre: ése es el que conviene agrandar. Y al revés, uno que trae muchas consultas con ' +
-      'un cierre bajo está juntando gente que no termina entrando.</div>');
+      'dice cuántos de los inscriptos trajo ese canal; el cierre — el porcentaje debajo de ' +
+      'Inscriptos — qué parte de sus consultas terminó anotándose. Un canal puede traer pocos ' +
+      'inscriptos y tener el mejor cierre: ése es el que conviene agrandar. Y al revés, uno que ' +
+      'trae muchas consultas con un cierre bajo está juntando gente que no termina entrando.</div>');
   }
 
   /* ══ Por carrera ═══════════════════════════════════════════════════════ */
@@ -1658,24 +1730,27 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     if(!filas.length){ $('pi-carrera').innerHTML = ''; return; }
 
     var conIns = filas.filter(function(r){ return r.i > 0; }).length;
-    var mejor = Math.max.apply(null, filas.map(function(r){ return r.cierre; }).concat([0]));
+    var totalIns = filas.reduce(function(s,r){ return s + r.i; }, 0);
 
     // Se muestran todas las que tienen inscriptos, y de las que no, sólo las
     // que juntaron consultas suficientes como para que el cero signifique algo.
     var ver = filas.filter(function(r){ return r.i > 0 || r.q >= 10; });
+    var ses = sesionesPorCarrera(filas.map(function(r){ return r.k; }));
 
     $('pi-carrera').innerHTML =
       '<div class="card"><header><div><h2>Qué carrera cierra</h2>' +
-      '<p class="hint">La carrera es la que la persona eligió en el formulario. Abajo de la ' +
-      'línea están las que juntan consultas y todavía no cerraron ninguna.</p></div>' +
+      '<p class="hint">La carrera es la que la persona eligió en el formulario; las sesiones son ' +
+      'las de su página. ' + PIE_TABLA + '</p></div>' +
       '<span class="pill">'+conIns+(conIns === 1 ? ' carrera con inscriptos' : ' carreras con inscriptos')+'</span></header>' +
-      '<div class="tw"><table><thead><tr><th>Carrera</th><th>Consultas</th>' +
-      '<th>Inscriptos</th><th>Cierre</th></tr></thead><tbody>' +
-      ver.map(function(r){
-        return '<tr><td>'+r.k+'</td><td>'+n(r.q)+'</td><td>'+n(r.i)+'</td>' +
-          '<td>'+(r.q ? pc(r.cierre) : '—')+'<div class="bartrack"><span class="bar" style="width:'+
-          (mejor ? Math.min(r.cierre/mejor*100,100) : 0).toFixed(1)+'%"></span></div></td></tr>';
-      }).join('') + '</tbody></table></div></div>';
+      tablaPasos('Carrera', ver.map(function(r){
+        return { nom:r.k, s:ses[clave(r.k)] || 0, q:r.q, i:r.i };
+      }), totalIns) + '</div>';
+
+    nota('<div class="note"><strong>Las sesiones de esta tabla no son del mismo universo que ' +
+      'las consultas.</strong> Son las visitas a la página de esa carrera, unidas por el nombre; ' +
+      'la consulta, en cambio, es la carrera que la persona eligió en el formulario, al que se ' +
+      'puede llegar sin pasar por esa página. Por eso en algunas filas el porcentaje aparece ' +
+      'como "—": no se puede dividir una cosa por la otra sin inventar un número.</div>');
 
     if(ver.length < filas.length){
       nota('<div class="note"><strong>La tabla de carreras no las lista todas.</strong> Entran ' +
@@ -1704,21 +1779,18 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       return;
     }
 
-    var mejor = Math.max.apply(null, filas.map(function(r){ return r.cierre; }).concat([0]));
+    var totalIns = filas.reduce(function(s,r){ return s + r.i; }, 0);
+    var ses = sesionesPorCampania();
 
     $('pi-campania').innerHTML =
       '<div class="card"><header><div><h2>Qué campaña trajo inscriptos</h2>' +
       '<p class="hint">Sólo las consultas que llegaron con campaña en el UTM. El resto ' +
-      '(' + n(sinCamp) + ' inscriptos) entró sin etiqueta y no se le puede poner nombre.</p></div>' +
-      '</header>' +
-      '<div class="tw"><table><thead><tr><th>Campaña</th><th>Canal</th><th>Consultas</th>' +
-      '<th>Inscriptos</th><th>Cierre</th></tr></thead><tbody>' +
-      filas.map(function(r){
-        return '<tr><td>'+r.k+'</td><td class="sub">'+(r.canal||'—')+'</td><td>'+n(r.q)+'</td>' +
-          '<td>'+n(r.i)+'</td>' +
-          '<td>'+(r.q ? pc(r.cierre) : '—')+'<div class="bartrack"><span class="bar" style="width:'+
-          (mejor ? Math.min(r.cierre/mejor*100,100) : 0).toFixed(1)+'%"></span></div></td></tr>';
-      }).join('') + '</tbody></table></div></div>';
+      '(' + n(sinCamp) + ' inscriptos) entró sin etiqueta y no se le puede poner nombre. ' +
+      PIE_TABLA + '</p></div></header>' +
+      tablaPasos('Campaña', filas.map(function(r){
+        return { nom:r.k + (r.canal ? '<div class="sub">'+r.canal+'</div>' : ''),
+                 s:ses[norm(r.k)] || 0, q:r.q, i:r.i };
+      }), totalIns) + '</div>';
 
     nota('<div class="note"><strong>Esta tabla es incompleta del lado de Meta, y conviene ' +
       'saberlo antes de sacar conclusiones.</strong> El sitio guarda el UTM que trae la URL en ' +
@@ -1743,15 +1815,19 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       'No se mueve al cambiar el período de arriba.</p></div>' +
       '<span class="pill">'+n(a.total)+' en el año</span></header>' +
       '<div class="chartbox"><canvas id="c-i-mes"></canvas></div>' +
+      // Mismo criterio que las otras tablas: el porcentaje va debajo del número
+      // al que pertenece, no en una columna aparte con un nombre que hay que ir
+      // a buscar. Debajo de Inscriptos está el cierre del mes.
       '<div class="tw" style="margin-top:14px"><table><thead><tr><th>Mes</th><th>Consultas</th>' +
-      '<th>Inscriptos</th><th>Cierre</th><th>Acumulado</th></tr></thead><tbody>' +
+      '<th>Inscriptos</th><th>Acumulado</th></tr></thead><tbody>' +
       a.filas.map(function(r){
         var sinMarcas = r.inscriptos === 0 && r.consultas >= 30;
         return '<tr><td>'+r.etq+
           (tiernos.indexOf(r.etq) >= 0 ? ' <span class="sub">'+AVISO_TIERNO+'</span>' : '')+'</td>' +
-          '<td>'+n(r.consultas)+'</td><td>'+n(r.inscriptos)+
-          (sinMarcas ? '<div class="sub">sin marcas</div>' : '')+'</td>' +
-          '<td>'+(r.consultas ? pc(r.inscriptos/r.consultas*100) : '—')+'</td>' +
+          '<td>'+n(r.consultas)+'</td>' +
+          '<td>'+n(r.inscriptos)+'<div class="sub">' +
+          (sinMarcas ? 'sin marcas' : (r.consultas ? pc(r.inscriptos/r.consultas*100) : '—')) +
+          '</div></td>' +
           '<td>'+n(r.acum)+'</td></tr>';
       }).join('') + '</tbody></table></div></div>';
 
