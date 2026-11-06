@@ -855,7 +855,11 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
   function sello(){
     var f = D.fuentes || {};
     $('chips').innerHTML = chip(f.ga4,'GA4') + chip(f.google_ads,'Google Ads') +
-      chip(f.meta,'Meta') + chip(f.inscriptos,'Inscriptos') +
+      // La fuente se llama "consultas" desde que los inscriptos salen de la
+      // hoja de la universidad; el chip sigue diciendo Inscriptos porque es lo
+      // que el cliente busca con la vista. Leer f.inscriptos lo dejaba en
+      // "sin conectar" para siempre.
+      chip(f.meta,'Meta') + chip(f.consultas,'Inscriptos') +
       '<span class="stamp" title="El día en curso no se incluye nunca: Analytics y Meta lo tienen ' +
       'incompleto y mostrarlo haría parecer que hoy cayó todo. Los inscriptos van por mes.">' +
       hastaCuando() + ' · actualizado ' +
@@ -1738,7 +1742,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       '<div class="tw" style="margin-top:14px"><table><thead><tr><th>Mes</th><th>Consultas</th>' +
       '<th>Inscriptos</th><th>Cierre</th><th>Acumulado</th></tr></thead><tbody>' +
       a.filas.map(function(r){
-        var sinMarcas = r.i === 0 && r.q >= 30;
+        var sinMarcas = r.inscriptos === 0 && r.consultas >= 30;
         return '<tr><td>'+r.etq+
           (tiernos.indexOf(r.etq) >= 0 ? ' <span class="sub">'+AVISO_TIERNO+'</span>' : '')+'</td>' +
           '<td>'+n(r.consultas)+'</td><td>'+n(r.inscriptos)+
