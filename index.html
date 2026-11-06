@@ -290,9 +290,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     <div id="p1-crm"></div>
     <div id="p1-acum"></div>
     <div class="card">
-      <header><div><h2>De dónde vienen las consultas</h2>
-        <p class="hint">Cada consulta se atribuye al canal de la sesión en la que se envió el
-        formulario: último clic no directo, la regla estándar de Analytics.</p></div>
+      <header><div><h2>De dónde vienen las consultas</h2></div>
         <div class="legend">
           <span><i class="swatch" style="background:var(--s-a)"></i>Sin publicidad</span>
           <span><i class="swatch" style="background:var(--s-c)"></i>De publicidad</span>
@@ -307,13 +305,9 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       </div>
     </div>
     <div class="grid2">
-      <div class="card"><header><div><h2>Consultas por día</h2>
-        <p class="hint">Cada barra es un día, partida entre lo que trajo la publicidad y
-        lo que llegó solo.</p></div></header>
+      <div class="card"><header><div><h2>Consultas por día</h2></div></header>
         <div class="chartbox"><canvas id="c-dia"></canvas></div></div>
-      <div class="card"><header><div><h2>Sesiones por día</h2>
-        <p class="hint">El tráfico que produjo esas consultas, abierto por canal. La
-        publicidad va en una sola línea; lo que llega solo, separado por de dónde viene.</p></div></header>
+      <div class="card"><header><div><h2>Sesiones por día</h2></div></header>
         <div class="chartbox"><canvas id="c-ses"></canvas></div></div>
     </div>
     <div id="p1-comoleer"></div>
@@ -780,6 +774,14 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
   }
   function etiquetaMes(m){ return MESN[Number(m.slice(5,7))] + '-' + m.slice(2,4); }
 
+  /** Dos datos chicos al pie de una tarjeta, con la misma línea divisoria que
+   *  usa el bloque de comparación contra el mes anterior. */
+  function bloqueParte(a, b){
+    if(!a && !b) return '';
+    return '<div class="deltas">' + (a ? '<span>'+a+'</span>' : '') +
+           (b ? '<span>'+b+'</span>' : '') + '</div>';
+  }
+
   function bloqueOrigen(titulo, consultas, sesiones, total, color){
     return '<div class="org" style="--org:'+color+'"><span class="t">'+titulo+'</span>' +
       '<span class="n">'+n(consultas)+'</span>' +
@@ -1000,6 +1002,14 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     $('t-canal-tot').innerHTML = '<tr><td>Total</td><td>'+n(ses)+'</td><td>'+n(leads)+'</td>' +
       '<td>'+(ses?pc(leads/ses*100):'—')+'</td></tr>';
 
+    nota('<div class="note"><strong>Cómo se le asigna un canal a cada consulta.</strong> Se usa ' +
+      'el canal de la sesión en la que se envió el formulario: último clic no directo, la regla ' +
+      'estándar de Analytics.</div>');
+    nota('<div class="note"><strong>Los dos gráficos del final.</strong> En consultas por día, ' +
+      'cada barra es un día partido entre lo que trajo la publicidad y lo que llegó solo. En ' +
+      'sesiones por día va el tráfico que produjo esas consultas, con la publicidad en una sola ' +
+      'línea y lo que llega solo separado por de dónde viene.</div>');
+
     // Todas las aclaraciones juntas y plegadas al pie. Se escriben igual de
     // completas que antes: lo que cambia es que no interrumpen la lectura.
     comoleer('p1-comoleer');
@@ -1073,9 +1083,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     D._acum = a;
     var ultimoMes = a.etq[a.etq.length-1];
     caja.innerHTML =
-      '<div class="card"><header><div><h2>Inscriptos acumulados · ' + a.anio + '</h2>' +
-      '<p class="hint">Cada mes suma los anteriores. Cada inscripto cuenta en el mes en que ' +
-      'entró su consulta.</p></div>' +
+      '<div class="card"><header><div><h2>Inscriptos acumulados · ' + a.anio + '</h2></div>' +
       '<span class="pill">' + n(a.total) + ' a ' + ultimoMes + '</span></header>' +
       '<div class="chartbox"><canvas id="c-acum"></canvas></div></div>';
 
@@ -1133,10 +1141,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     };
 
     caja.innerHTML =
-      '<div class="card"><header><div><h2>Del tráfico al inscripto, canal por canal</h2>' +
-      '<p class="hint">Cuánta gente entró, cuánta dejó la consulta y cuánta terminó ' +
-      'inscribiéndose. El inscripto se cuenta en el mes en que consultó, no en el mes en que ' +
-      'se anotó.</p></div>' +
+      '<div class="card"><header><div><h2>Del tráfico al inscripto, canal por canal</h2></div>' +
       '<span class="pill">'+n(ti)+' inscriptos sobre '+n(tc)+' consultas</span></header>' +
       '<div class="tw"><table><thead><tr><th>Canal</th><th>Sesiones</th><th>Consultas</th>' +
       '<th>de las sesiones</th><th>Inscriptos</th><th>de las consultas</th></tr></thead><tbody>' +
@@ -1313,9 +1318,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     };
 
     $('p1-embudo').innerHTML =
-      '<div class="card"><header><div><h2>De la visita a la inscripción</h2>' +
-      '<p class="hint">Las barras comparan la mezcla de canales, no el volumen: el canal que ' +
-      'se agranda al bajar es el que mejor convierte.</p></div>' +
+      '<div class="card"><header><div><h2>De la visita a la inscripción</h2></div>' +
       '<div class="legend">'+leyenda+'</div></header>' +
       '<div class="embudom">'+filas+'</div>' +
       (ins ? '<div class="legend" style="margin-top:10px">' +
@@ -1342,6 +1345,9 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
 
     nota(avisoDesde());
     nota(avisoSesiones(tSes));
+    nota('<div class="note"><strong>Las barras comparan la mezcla de canales, no el ' +
+      'volumen.</strong> El canal que se agranda a medida que se baja es el que mejor ' +
+      'convierte.</div>');
     nota('<div class="note"><strong>Cómo se lee el embudo.</strong> Debajo de cada número de ' +
       'la tabla está cuánto pesa ese canal <em>dentro de ese paso</em> — los porcentajes de ' +
       'una columna suman 100. Si un canal pesa 20% al entrar y 35% al consultar, está ' +
@@ -1430,10 +1436,11 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
      si las tres se leen igual, no hay que volver a aprender a leerlas en cada
      bloque. Lo que antes era la columna "Cierre" ahora es el porcentaje debajo
      de Inscriptos, que es donde se entiende sin explicación. */
-  var PIE_TABLA = 'Debajo de cada número, qué porcentaje del paso anterior ' +
-    'representa: las consultas sobre las sesiones, y los inscriptos sobre las ' +
-    'consultas — eso último es el cierre. El peso es cuántos de todos los ' +
-    'inscriptos trajo esa fila.';
+  var PIE_TABLA = '<div class="note"><strong>Cómo se leen las tres tablas.</strong> Son ' +
+    'iguales a propósito: sesiones, consultas, inscriptos y peso, en ese orden. Debajo de cada ' +
+    'número está qué porcentaje del paso anterior representa — las consultas sobre las sesiones, ' +
+    'y los inscriptos sobre las consultas, que es el cierre. El peso, al final, es cuántos de ' +
+    'todos los inscriptos trajo esa fila.</div>';
 
   function tablaPasos(col, filas, totalIns){
     var ts = 0, tq = 0, ti = 0;
@@ -1525,10 +1532,18 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     var pIns = prev ? inscriptos(prev) : null;
     var pCons = prev ? consultasCrm(prev) : null;
 
-    var pago = 0, libre = 0;
+    // Pago y no pago, en las dos puntas: cuántas consultas trajo cada lado y
+    // cuántos inscriptos salieron de ellas. Es la comparación que contesta si
+    // la pauta pesa más en el cierre que en el volumen.
+    var pago = 0, libre = 0, qPago = 0, qLibre = 0;
     Object.keys(crm).forEach(function(c){
-      if(esPagoCrm(c)) pago += crm[c].inscriptos; else libre += crm[c].inscriptos;
+      if(esPagoCrm(c)){ pago += crm[c].inscriptos; qPago += crm[c].consultas; }
+      else { libre += crm[c].inscriptos; qLibre += crm[c].consultas; }
     });
+    // Analytics cuenta el evento del formulario; la hoja cuenta las filas que
+    // recibió la universidad. Nunca dan igual, y el que vale es el de la hoja.
+    // Se muestra el otro al lado para que la diferencia no parezca un error.
+    var ga4Leads = evento('generate_lead');
 
     var etq = mes === 'todo' ? 'período completo'
             : MESN[Number(mes.slice(5,7))] + ' ' + mes.slice(0,4);
@@ -1549,10 +1564,18 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       // leen como si hablaran de consultas. Consultas cierra la fila porque es
       // el universo del que salen los inscriptos, no otro inscripto más.
       tarjeta('','Sin publicidad', n(libre),
-              ins ? Math.round(libre/ins*100)+'% de los inscriptos' : '—') +
+              ins ? Math.round(libre/ins*100)+'% de los inscriptos' : '—',
+              bloqueParte(n(qLibre)+' consultas',
+                          qLibre ? 'cierra al '+pc(libre/qLibre*100) : '')) +
       tarjeta('','De publicidad', n(pago),
-              ins ? Math.round(pago/ins*100)+'% de los inscriptos' : '—') +
-      tarjeta('','Consultas', n(cons), 'el universo del que salen los inscriptos',
+              ins ? Math.round(pago/ins*100)+'% de los inscriptos' : '—',
+              bloqueParte(n(qPago)+' consultas' +
+                          (cons ? ' · '+Math.round(qPago/cons*100)+'%' : ''),
+                          qPago ? 'cierra al '+pc(pago/qPago*100) : '')) +
+      tarjeta('','Consultas', n(cons), 'las que recibió la universidad',
+              (ga4Leads && ga4Leads !== cons
+                ? bloqueParte('Analytics mide '+n(ga4Leads), '')
+                : '') +
               bloqueDelta(cons, pCons, 'normal'));
 
     piEmbudo(crm);
@@ -1566,6 +1589,16 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
         'Por dos razones que se suman: parte de esa gente se anota más adelante, y la marca de ' +
         'inscripto la carga alguien a mano, sin una frecuencia fija. Un mes recién cerrado no se ' +
         'puede comparar de igual a igual con uno de hace tres.</div>');
+    }
+    if(ga4Leads && ga4Leads !== cons){
+      nota('<div class="note"><strong>Las consultas de esta sección y las del Resumen no dan el ' +
+        'mismo número, y está bien.</strong> El Resumen cuenta el evento que dispara Analytics ' +
+        'cuando alguien manda el formulario (' + n(ga4Leads) + ' en este período); acá se cuentan ' +
+        'las filas de la hoja de la universidad (' + n(cons) + '). Son dos registros del mismo ' +
+        'hecho: Analytics pierde los envíos de quien tiene bloqueador o se va antes de que el ' +
+        'evento llegue, así que casi siempre mide de menos. El que manda es el de la hoja — es lo ' +
+        'que la universidad realmente recibió — y además es el único que trae el inscripto en la ' +
+        'misma fila que su consulta. Por eso el cierre se calcula sobre ése.</div>');
     }
     nota('<div class="note"><strong>Qué es un inscripto acá.</strong> Una fila de la hoja de la ' +
       'universidad que tiene la marca de inscripción puesta. Cuenta en el mes en que esa persona ' +
@@ -1645,9 +1678,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       .join('');
 
     $('pi-embudo').innerHTML =
-      '<div class="card"><header><div><h2>El embudo de la inscripción</h2>' +
-      '<p class="hint">Las barras comparan la mezcla de canales, no el volumen: el canal que se ' +
-      'agranda al bajar es el que mejor termina cerrando.</p></div>' +
+      '<div class="card"><header><div><h2>El embudo de la inscripción</h2></div>' +
       '<div class="legend">'+leyenda+'</div></header>' +
       '<div class="embudom">'+filas+'</div></div>';
 
@@ -1657,6 +1688,10 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
         'el informe de UTM, que no tiene filas para estas fechas. Las consultas y los inscriptos ' +
         'no se ven afectados.</div>');
     } else {
+      nota('<div class="note"><strong>Las barras del embudo comparan la mezcla de canales, no ' +
+        'el volumen.</strong> Cada paso ocupa todo su ancho aunque sean 40.000 sesiones y 14 ' +
+        'inscriptos: lo que hay que mirar es qué color se agranda al bajar, porque ése es el ' +
+        'canal que mejor termina cerrando.</div>');
       nota('<div class="note"><strong>Acá los tres escalones hablan el mismo idioma.</strong> ' +
         'En el embudo del Resumen los primeros pasos usan los canales de Analytics y el último ' +
         'los de la hoja, por eso lleva dos referencias. Este embudo agrupa las sesiones con el ' +
@@ -1699,9 +1734,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     datos.forEach(function(r){ tq += r.q; ti += r.i; });
 
     $('pi-canal').innerHTML =
-      '<div class="card"><header><div><h2>De dónde salieron los inscriptos</h2>' +
-      '<p class="hint">El canal es el del UTM con el que llegó la consulta de esa persona. ' +
-      'Quien llegó sin etiqueta cuenta como Orgánico. ' + PIE_TABLA + '</p></div>' +
+      '<div class="card"><header><div><h2>De dónde salieron los inscriptos</h2></div>' +
       '<span class="pill">'+n(ti)+' de '+n(tq)+' consultas</span></header>' +
       tablaPasos('Canal', tabla.map(function(r){
         // El cuadradito de color es el mismo del embudo de arriba: deja saltar
@@ -1711,6 +1744,10 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
                  s:r.s, q:r.q, i:r.i };
       }), ti) + '</div>';
 
+    nota(PIE_TABLA);
+    nota('<div class="note"><strong>De dónde sale el canal.</strong> Es el del UTM con el que ' +
+      'llegó la consulta de esa persona. Quien llegó sin etiqueta cuenta como Orgánico, que es ' +
+      'también donde cae el que la perdió navegando por el sitio antes de completar.</div>');
     nota('<div class="note"><strong>Peso y cierre contestan cosas distintas.</strong> El peso ' +
       'dice cuántos de los inscriptos trajo ese canal; el cierre — el porcentaje debajo de ' +
       'Inscriptos — qué parte de sus consultas terminó anotándose. Un canal puede traer pocos ' +
@@ -1738,16 +1775,15 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     var ses = sesionesPorCarrera(filas.map(function(r){ return r.k; }));
 
     $('pi-carrera').innerHTML =
-      '<div class="card"><header><div><h2>Qué carrera cierra</h2>' +
-      '<p class="hint">La carrera es la que la persona eligió en el formulario; las sesiones son ' +
-      'las de su página. ' + PIE_TABLA + '</p></div>' +
+      '<div class="card"><header><div><h2>Qué carrera cierra</h2></div>' +
       '<span class="pill">'+conIns+(conIns === 1 ? ' carrera con inscriptos' : ' carreras con inscriptos')+'</span></header>' +
       tablaPasos('Carrera', ver.map(function(r){
         return { nom:r.k, s:ses[clave(r.k)] || 0, q:r.q, i:r.i };
       }), totalIns) + '</div>';
 
-    nota('<div class="note"><strong>Las sesiones de esta tabla no son del mismo universo que ' +
-      'las consultas.</strong> Son las visitas a la página de esa carrera, unidas por el nombre; ' +
+    nota('<div class="note"><strong>Las sesiones de la tabla de carreras no son del mismo ' +
+      'universo que las consultas.</strong> Son las visitas a la página de esa carrera, unidas ' +
+      'por el nombre; ' +
       'la consulta, en cambio, es la carrera que la persona eligió en el formulario, al que se ' +
       'puede llegar sin pasar por esa página. Por eso en algunas filas el porcentaje aparece ' +
       'como "—": no se puede dividir una cosa por la otra sin inventar un número.</div>');
@@ -1783,15 +1819,18 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     var ses = sesionesPorCampania();
 
     $('pi-campania').innerHTML =
-      '<div class="card"><header><div><h2>Qué campaña trajo inscriptos</h2>' +
-      '<p class="hint">Sólo las consultas que llegaron con campaña en el UTM. El resto ' +
-      '(' + n(sinCamp) + ' inscriptos) entró sin etiqueta y no se le puede poner nombre. ' +
-      PIE_TABLA + '</p></div></header>' +
+      '<div class="card"><header><div><h2>Qué campaña trajo inscriptos</h2></div>' +
+      '<span class="pill">'+n(sinCamp)+' inscriptos sin campaña</span></header>' +
       tablaPasos('Campaña', filas.map(function(r){
         return { nom:r.k + (r.canal ? '<div class="sub">'+r.canal+'</div>' : ''),
                  s:ses[norm(r.k)] || 0, q:r.q, i:r.i };
       }), totalIns) + '</div>';
 
+    nota('<div class="note"><strong>En la tabla de campañas entran sólo las consultas que ' +
+      'llegaron con campaña en el UTM.</strong> Las ' + n(sinCamp) + ' restantes entraron sin ' +
+      'etiqueta y no se les puede poner nombre. Las sesiones vienen de Analytics y el nombre de ' +
+      'campaña de Google se traduce de su ID antes de cruzarlas; cuando el nombre no coincide ' +
+      'con el que guardó la hoja, el porcentaje sale "—" en vez de un número inventado.</div>');
     nota('<div class="note"><strong>Esta tabla es incompleta del lado de Meta, y conviene ' +
       'saberlo antes de sacar conclusiones.</strong> El sitio guarda el UTM que trae la URL en ' +
       'el momento de enviar el formulario: si la persona llega al home por un anuncio y recién ' +
@@ -1810,9 +1849,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     var tiernos = mesesTiernos().map(function(m){ return MESN[Number(m.slice(5,7))]; });
 
     $('pi-mes').innerHTML =
-      '<div class="card"><header><div><h2>Cómo viene el año · ' + a.anio + '</h2>' +
-      '<p class="hint">Las barras son los inscriptos de cada mes; la línea, el acumulado. ' +
-      'No se mueve al cambiar el período de arriba.</p></div>' +
+      '<div class="card"><header><div><h2>Cómo viene el año · ' + a.anio + '</h2></div>' +
       '<span class="pill">'+n(a.total)+' en el año</span></header>' +
       '<div class="chartbox"><canvas id="c-i-mes"></canvas></div>' +
       // Mismo criterio que las otras tablas: el porcentaje va debajo del número
@@ -1831,6 +1868,10 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
           '<td>'+n(r.acum)+'</td></tr>';
       }).join('') + '</tbody></table></div></div>';
 
+    nota('<div class="note"><strong>El gráfico del año no se mueve al cambiar el período de ' +
+      'arriba.</strong> Las barras son los inscriptos de cada mes y la línea el acumulado, ' +
+      'siempre del año entero: es la curva que contesta cómo viene el ciclo, y perdería sentido ' +
+      'si se recortara al mes elegido.</div>');
     if(a.filas.some(function(r){ return r.inscriptos === 0 && r.consultas >= 30; })){
       nota('<div class="note"><strong>Hay meses con muchas consultas y ningún inscripto ' +
         'marcado.</strong> Van señalados como <em>sin marcas</em>. Lo más probable no es que no ' +
@@ -1901,10 +1942,11 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       hayInsc = lista.some(function(c){ return c.insc > 0; });
     }
 
-    $('p2-cuerpo').innerHTML = '<div class="card"><header><div><h2>Embudo por carrera</h2>' +
-      '<p class="hint">Cuatro pasos: cuánta gente miró la página de la carrera, cuántas ' +
-      'hicieron clic en <strong>+ INFO</strong>, cuántas llegaron a ver el formulario abierto ' +
-      'y cuántas lo enviaron.</p></div></header>' +
+    nota('<div class="note"><strong>Los cuatro pasos del embudo por carrera.</strong> Cuánta ' +
+      'gente miró la página de la carrera, cuántas hicieron clic en <strong>+ INFO</strong>, ' +
+      'cuántas llegaron a ver el formulario abierto y cuántas lo enviaron.</div>');
+
+    $('p2-cuerpo').innerHTML = '<div class="card"><header><div><h2>Embudo por carrera</h2></div></header>' +
       '<div class="tw"><table><thead><tr><th>Carrera</th><th>Nivel</th>' +
       (hayVistas?'<th>Vistas de la página</th>':'') +
       '<th>Clics en + INFO</th><th>Abrieron</th><th>Consultas</th>' +
@@ -1941,15 +1983,20 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     }
 
     $('p2-paginas').innerHTML = vistas.sueltas.length
-      ? '<div class="card"><header><div><h2>Páginas de carrera que no pude emparejar</h2>' +
-        '<p class="hint">Están medidas, pero su dirección no coincide con ninguno de los nombres ' +
-        'que llegan en el parámetro <code>carrera</code>. Si alguna debería estar en la tabla de ' +
-        'arriba, hay que alinear el nombre.</p></div></header>' +
+      ? '<div class="card"><header><div><h2>Páginas de carrera que no pude emparejar</h2></div>' +
+        '</header>' +
         '<div class="tw"><table><thead><tr><th>Dirección</th><th>Vistas</th></tr></thead><tbody>' +
         vistas.sueltas.map(function(p){
           return '<tr><td class="sub" style="text-align:left"><code>'+p.ruta+'</code></td><td>'+n(p.vistas)+'</td></tr>';
         }).join('') + '</tbody></table></div></div>'
       : '';
+
+    if(vistas.sueltas.length){
+      nota('<div class="note"><strong>Las páginas de carrera que quedaron sin emparejar están ' +
+        'medidas igual.</strong> Lo que pasa es que su dirección no coincide con ninguno de los ' +
+        'nombres que llegan en el parámetro <code>carrera</code>. Si alguna debería estar en la ' +
+        'tabla de arriba, hay que alinear el nombre.</div>');
+    }
 
     comoleer('p2-comoleer');
   }
@@ -2322,10 +2369,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     var insWa = inscOk() ? (inscPorCanal()['Derivación de WhatsApp']||0) : 0;
 
     caja.innerHTML =
-      '<div class="card"><header><div><h2>De WhatsApp y de la bio a la web</h2>' +
-      '<p class="hint">Cuando alguien del equipo manda un link con UTM desde el chat, Analytics ve ' +
-      'una visita nueva con esa marca. Son las consultas que empezaron en una conversación ' +
-      'y terminaron en el formulario.</p></div>' +
+      '<div class="card"><header><div><h2>De WhatsApp y de la bio a la web</h2></div>' +
       '<span class="pill">' + n(lds) + ' consultas · ' + n(ses) + ' sesiones' +
       (insWa ? ' · ' + n(insWa) + ' inscriptos' : '') + '</span></header>' +
       '<div class="tw"><table><thead><tr><th>Origen</th><th>Quién deriva</th><th>A dónde</th>' +
@@ -2344,6 +2388,9 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
         'no se puede abrir por persona: la hoja guarda el canal, no quién mandó el link. ' +
         'La tabla sí muestra quién deriva, pero hasta la consulta.</div>');
     }
+    nota('<div class="note"><strong>Qué mide este bloque.</strong> Cuando alguien del equipo ' +
+      'manda un link con UTM desde el chat, Analytics ve una visita nueva con esa marca. Son las ' +
+      'consultas que empezaron en una conversación y terminaron en el formulario.</div>');
     nota('<div class="note"><strong>Estas consultas cuentan como "Sin publicidad".</strong> ' +
       'Y está bien que así sea: no se puede probar que la conversación haya empezado en un ' +
       'aviso pago — pudo venir de la bio, del botón de WhatsApp del sitio o de un conocido. ' +
@@ -2401,9 +2448,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       tarjeta('','Clics de marca', clics?Math.round(marca/clics*100)+'%':'—',
               'gente que ya buscaba UCINE por nombre') +
       '</div>' +
-      '<div class="card"><header><div><h2>Campaña por campaña</h2>' +
-      '<p class="hint">Marca y no-marca se clasifican por ID de campaña, no por el nombre: si ' +
-      'alguien renombra la campaña, el tablero sigue funcionando.</p></div></header>' +
+      '<div class="card"><header><div><h2>Campaña por campaña</h2></div></header>' +
       '<div class="tw"><table><thead><tr><th>Campaña</th><th>Tipo</th><th>Impresiones</th>' +
       '<th>Clics</th><th>Inversión</th><th>Costo / clic</th></tr></thead><tbody>' +
       lista.map(function(c){
@@ -2421,6 +2466,8 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
         'cerrados todavía suman inscriptos, así que su costo arranca alto y baja con el ' +
         'tiempo. Un mes viejo y uno nuevo no se comparan de igual a igual.</div>');
     }
+    nota('<div class="note"><strong>Marca y no-marca se clasifican por ID de campaña, no por el ' +
+      'nombre.</strong> Si alguien renombra la campaña, el tablero sigue funcionando igual.</div>');
     nota('<div class="note"><strong>El costo por consulta no se puede abrir por ' +
       'campaña.</strong> Analytics no permite pedir el costo y los eventos en el mismo ' +
       'informe, así que la inversión llega por campaña y las consultas por canal. Para el ' +
@@ -2488,9 +2535,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
               'consultaron con el UTM de Meta · se etiqueta desde octubre') : '') +
       tarjeta('','Leads según Meta', n(leads), leads?'los cuenta Meta, con su ventana':'esta cuenta no reporta leads') +
       '</div>' +
-      '<div class="card"><header><div><h2>Campaña por campaña · Meta</h2>' +
-      '<p class="hint">La cuenta publicitaria es compartida con FUCLAB. Entran sólo las campañas ' +
-      'que dicen <code>' + (D.meta_filtro||'') + '</code> en el nombre.</p></div></header>' +
+      '<div class="card"><header><div><h2>Campaña por campaña · Meta</h2></div></header>' +
       '<div class="tw"><table><thead><tr><th>Campaña</th><th>Objetivo</th><th>Impresiones</th>' +
       '<th>Clics al sitio</th><th>Inversión</th><th>Conversaciones</th>' +
       '<th>Leads · Meta</th></tr></thead><tbody>' +
@@ -2503,6 +2548,9 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       money(inv)+'</td><td>'+n(convo)+'</td><td>'+n(leads)+
       '</td></tr></tfoot></table></div></div>';
 
+    nota('<div class="note"><strong>La cuenta publicitaria de Meta es compartida con ' +
+      'FUCLAB.</strong> En la tabla entran sólo las campañas que dicen <code>' +
+      (D.meta_filtro||'') + '</code> en el nombre.</div>');
     nota('<div class="note"><strong>Una conversación iniciada no es una consulta.</strong> ' +
       'Las campañas de mensajes no mandan a nadie al sitio: producen gente que abre el chat. ' +
       'Esa columna no se suma nunca a las consultas del formulario, y no se renombra a "leads" ' +
