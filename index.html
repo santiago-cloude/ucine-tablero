@@ -1461,12 +1461,16 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
               'de las consultas llegaron a inscribirse',
               bloqueDelta(cons ? ins/cons*100 : 0,
                           (pCons ? pIns/pCons*100 : null), 'normal')) +
-      tarjeta('','Consultas', n(cons), 'las que pueden terminar en inscripción',
-              bloqueDelta(cons, pCons, 'normal')) +
+      // Sin publicidad y De publicidad van pegadas a los inscriptos, no después
+      // de consultas: si consultas se mete en el medio, las dos siguientes se
+      // leen como si hablaran de consultas. Consultas cierra la fila porque es
+      // el universo del que salen los inscriptos, no otro inscripto más.
       tarjeta('','Sin publicidad', n(libre),
               ins ? Math.round(libre/ins*100)+'% de los inscriptos' : '—') +
       tarjeta('','De publicidad', n(pago),
-              ins ? Math.round(pago/ins*100)+'% de los inscriptos' : '—');
+              ins ? Math.round(pago/ins*100)+'% de los inscriptos' : '—') +
+      tarjeta('','Consultas', n(cons), 'el universo del que salen los inscriptos',
+              bloqueDelta(cons, pCons, 'normal'));
 
     piEmbudo(crm);
     piCanal(crm, ins);
