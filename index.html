@@ -290,7 +290,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     <div id="p1-crm"></div>
     <div id="p1-acum"></div>
     <div class="card">
-      <header><div><h2>De dónde vienen las consultas</h2></div>
+      <header><div><h2>De dónde vienen las consultas, según Analytics</h2></div>
         <div class="legend">
           <span><i class="swatch" style="background:var(--s-a)"></i>Sin publicidad</span>
           <span><i class="swatch" style="background:var(--s-c)"></i>De publicidad</span>
@@ -896,16 +896,37 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
   function p1(){
     NOTAS = [];
     var prev = mesAnterior();
-    var leads = evento('generate_lead'), ses = sumar('dias','sesiones'), inv = sumar('google_ads','costo');
+    /* Las consultas del tablero salen de la hoja de la universidad, no del
+       evento de Analytics. Son dos registros del mismo hecho y nunca dan igual
+       — Analytics pierde a quien tiene bloqueador o se va antes de que el
+       evento salga — pero el que vale es lo que la universidad recibió, y es
+       el único que trae el inscripto en la misma fila. El número del evento
+       sigue a la vista en los dos cuadros que lo usan, dicho con todas las
+       letras, para que la diferencia no parezca un error. */
+    var leads = consOk() ? consultasCrm() : evento('generate_lead');
+    var ga4Leads = evento('generate_lead');
+    var ses = sumar('dias','sesiones'), inv = sumar('google_ads','costo');
     var lc = porClave('canales_leads','canal','leads');
-    var pagos = Object.keys(lc).reduce(function(s,c){ return esPago(c) ? s+lc[c] : s; }, 0);
+
+    var crmC = consOk() ? crmPorCanal() : {};
+    var pagos = 0;
+    Object.keys(crmC).forEach(function(c){ if(esPagoCrm(c)) pagos += crmC[c].consultas; });
+    if(!consOk()) pagos = Object.keys(lc).reduce(function(s,c){ return esPago(c) ? s+lc[c] : s; }, 0);
+
+    /** Consultas pagas de un mes cualquiera, con el criterio de la hoja. */
+    var pagasDe = function(m){
+      var o = crmPorCanal(m), t = 0;
+      Object.keys(o).forEach(function(c){ if(esPagoCrm(c)) t += o[c].consultas; });
+      return t;
+    };
 
     var invM = invMeta(), invMS = invMetaSitio(), invT = inv + invMS;
 
-    // Consultas y todo lo que se calcula con ellas se compara sólo contra meses
-    // en que ya se medían (desde el 31-ago). Sesiones e inversión, siempre.
-    var prevC = comparable(prev, MEDICION_DESDE) ? prev : null;
-    var pLeads = prevC ? evento('generate_lead', prevC) : null;
+    // La hoja tiene consultas desde enero, así que ya no hace falta recortar la
+    // comparación a los meses en que Analytics medía bien. Si la hoja no está,
+    // se vuelve al criterio viejo.
+    var prevC = consOk() ? prev : (comparable(prev, MEDICION_DESDE) ? prev : null);
+    var pLeads = prevC ? (consOk() ? consultasCrm(prevC) : evento('generate_lead', prevC)) : null;
     var pSes   = prev ? sumar('dias','sesiones',null,prev) : null;
     var pInv   = prev ? sumar('google_ads','costo',null,prev) : null;
     var pInvM  = prev ? invMeta(prev) : null;
@@ -915,8 +936,12 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       pCpi = inscPagos(prev) ? pInvT/inscPagos(prev) : null;
     }
     if(prevC){
-      var lcp = porClave('canales_leads','canal','leads',null,prevC);
-      pPagos = Object.keys(lcp).reduce(function(s,c){ return esPago(c) ? s+lcp[c] : s; }, 0);
+      if(consOk()){
+        pPagos = pagasDe(prevC);
+      } else {
+        var lcp = porClave('canales_leads','canal','leads',null,prevC);
+        pPagos = Object.keys(lcp).reduce(function(s,c){ return esPago(c) ? s+lcp[c] : s; }, 0);
+      }
       pCpl = pPagos ? pInvT/pPagos : null;
     }
 
@@ -929,6 +954,8 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
 
     $('k1').innerHTML =
       tarjeta('hero','Consultas — '+etq, n(leads), 'formulario enviado y confirmado',
+              (consOk() && ga4Leads && ga4Leads !== leads
+                ? bloqueParte('Analytics mide ' + n(ga4Leads), '') : '') +
               bloqueDelta(leads, pLeads, 'normal')) +
       tarjeta('','Sin publicidad', n(libres),
               leads ? Math.round(libres/leads*100)+'% del total' : '—',
@@ -980,8 +1007,17 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
 
     var sc = porClave('canales_sesiones','canal','sesiones');
 
+    // Los dos bloques de origen acompañan a las tarjetas, así que se arman con
+    // el mismo criterio: consultas de la hoja y sesiones agrupadas con los
+    // nombres de la hoja. Si la hoja no está, se vuelve a los canales de
+    // Analytics y los números siguen cerrando entre sí.
     var sesPago = 0, sesLibre = 0;
-    Object.keys(sc).forEach(function(c){ if(esPago(c)) sesPago += sc[c]; else sesLibre += sc[c]; });
+    if(consOk()){
+      var sp = sesionesPorCanalPropio();
+      Object.keys(sp).forEach(function(c){ if(esPagoCrm(c)) sesPago += sp[c]; else sesLibre += sp[c]; });
+    } else {
+      Object.keys(sc).forEach(function(c){ if(esPago(c)) sesPago += sc[c]; else sesLibre += sc[c]; });
+    }
     $('origen').innerHTML =
       bloqueOrigen('Sin publicidad', libres, sesLibre, leads, 'var(--s-a)') +
       bloqueOrigen('De publicidad', pagos, sesPago, leads, 'var(--s-c)');
@@ -999,12 +1035,22 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
         '</td><td>'+n(l)+'</td>' +
         '<td>'+(s?pc(l/s*100):'—')+'</td></tr>';
     }).join('');
-    $('t-canal-tot').innerHTML = '<tr><td>Total</td><td>'+n(ses)+'</td><td>'+n(leads)+'</td>' +
-      '<td>'+(ses?pc(leads/ses*100):'—')+'</td></tr>';
+    // El total de esta tabla es el del evento de Analytics, no el de la hoja:
+    // es la única cifra con la que las filas de arriba suman.
+    $('t-canal-tot').innerHTML = '<tr><td>Total</td><td>'+n(ses)+'</td><td>'+n(ga4Leads)+'</td>' +
+      '<td>'+(ses?pc(ga4Leads/ses*100):'—')+'</td></tr>';
 
-    nota('<div class="note"><strong>Cómo se le asigna un canal a cada consulta.</strong> Se usa ' +
-      'el canal de la sesión en la que se envió el formulario: último clic no directo, la regla ' +
-      'estándar de Analytics.</div>');
+    nota('<div class="note"><strong>De dónde sale cada número de consultas.</strong> El número ' +
+      'grande de arriba son las consultas que recibió la universidad: una fila por formulario ' +
+      'en su hoja. Los dos cuadros que dicen <em>según Analytics</em> — la tabla por canal y el ' +
+      'embudo — cuentan otra cosa: el evento que dispara el sitio al enviar el formulario (' +
+      n(ga4Leads) + ' en este período). Analytics pierde a quien tiene bloqueador o se va antes ' +
+      'de que el evento salga, así que casi siempre mide de menos. Se dejan los dos porque son ' +
+      'los únicos que saben abrir las consultas por canal de Analytics y por paso del ' +
+      'formulario; el que vale como total es el de la hoja.</div>');
+    nota('<div class="note"><strong>Cómo se le asigna un canal a cada consulta en esa ' +
+      'tabla.</strong> Se usa el canal de la sesión en la que se envió el formulario: último ' +
+      'clic no directo, la regla estándar de Analytics.</div>');
     nota('<div class="note"><strong>Los dos gráficos del final.</strong> En consultas por día, ' +
       'cada barra es un día partido entre lo que trajo la publicidad y lo que llegó solo. En ' +
       'sesiones por día va el tráfico que produjo esas consultas, con la publicidad en una sola ' +
@@ -1318,7 +1364,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     };
 
     $('p1-embudo').innerHTML =
-      '<div class="card"><header><div><h2>De la visita a la inscripción</h2></div>' +
+      '<div class="card"><header><div><h2>De la visita a la inscripción, según Analytics</h2></div>' +
       '<div class="legend">'+leyenda+'</div></header>' +
       '<div class="embudom">'+filas+'</div>' +
       (ins ? '<div class="legend" style="margin-top:10px">' +
@@ -1573,9 +1619,9 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
                           (cons ? ' · '+Math.round(qPago/cons*100)+'%' : ''),
                           qPago ? 'cierra al '+pc(pago/qPago*100) : '')) +
       tarjeta('','Consultas', n(cons), 'las que recibió la universidad',
-              (ga4Leads && ga4Leads !== cons
-                ? bloqueParte('Analytics mide '+n(ga4Leads), '')
-                : '') +
+              bloqueParte('Sin publicidad ' + n(qLibre),
+                          'De publicidad ' + n(qPago) +
+                          (cons ? ' · '+Math.round(qPago/cons*100)+'%' : '')) +
               bloqueDelta(cons, pCons, 'normal'));
 
     piEmbudo(crm);
@@ -2670,12 +2716,20 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       var fechas = dias.map(function(r){ return String(r.fecha); });
       var etq = fechas.map(function(f){ return f.slice(8,10)+'/'+f.slice(5,7); });
 
-      /* Consultas por día, separadas por origen. */
+      /* Consultas por día, separadas por origen. Salen de la hoja, igual que
+         la tarjeta de arriba, así que las barras suman el mismo total. */
       var lpd = {}, lld = {};
-      filtrar('canales_leads').forEach(function(r){
-        var d = esPago(r.canal) ? lpd : lld;
-        d[r.fecha] = (d[r.fecha]||0) + (Number(r.leads)||0);
-      });
+      if(consOk()){
+        filtrar('consultas_crm').forEach(function(r){
+          var d = esPagoCrm(r.canal) ? lpd : lld;
+          d[r.fecha] = (d[r.fecha]||0) + (Number(r.consultas)||0);
+        });
+      } else {
+        filtrar('canales_leads').forEach(function(r){
+          var d = esPago(r.canal) ? lpd : lld;
+          d[r.fecha] = (d[r.fecha]||0) + (Number(r.leads)||0);
+        });
+      }
       hacer('c-dia', { type:'bar', data:{ labels:etq, datasets:[
         { label:'Sin publicidad', data:fechas.map(function(f){ return lld[f]||0; }),
           backgroundColor:cv('--s-a'), borderRadius:4, borderSkipped:false,
