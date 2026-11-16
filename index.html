@@ -2495,10 +2495,18 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     var convC = {};
     filtrar('google_ads_conv').forEach(function(r){
       var k = String(r.campania_id);
+      // El informe devuelve una fila por cada consulta del sitio, tenga o no
+      // campaña de Google detrás: las que no la tienen vienen con "(not set)".
+      // Si se sumaran, el total de la tabla de Google serían todas las
+      // consultas del tablero, que es justo lo que no hay que hacer.
+      if(!/^\d+$/.test(k)) return;
       convC[k] = (convC[k]||0) + (Number(r.n)||0);
     });
     var hayConv = Object.keys(convC).length > 0;
-    var convTot = Object.keys(convC).reduce(function(s,k){ return s+convC[k]; }, 0);
+    // El total se suma sobre las campañas que se ven en la tabla, no sobre
+    // todo lo que trajo el informe: así el pie de la tabla y la tarjeta de
+    // arriba dan siempre el mismo número que las filas.
+    var convTot = lista.reduce(function(s,c){ return s + (convC[c.id]||0); }, 0);
     // Si hay detalle por campaña, manda ése: así la tarjeta de arriba y el
     // total de la tabla dan el mismo número, que es la mitad del problema.
     if(hayConv) lp = convTot;
