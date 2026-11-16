@@ -136,6 +136,13 @@ h1,h2{margin:0}
 /* inline-block para que también se pueda usar suelto dentro de una celda:
    como inline puro, el alto y el ancho no se aplican y no se ve nada. */
 .swatch{display:inline-block;vertical-align:middle;width:11px;height:11px;border-radius:3px;flex:none}
+/* Rótulo de bloque: separa dos plataformas dentro de una misma página sin
+   meter otra tarjeta. La línea que sigue al texto marca dónde empieza cada
+   una, que es lo único que hacía falta para no confundir Google con Meta. */
+.bloque{display:flex;align-items:center;gap:11px;margin:10px 0 2px;font-size:12px;
+  font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.bloque::after{content:"";flex:1;height:1px;background:var(--hair)}
+.bloque .fuente{font-weight:600;letter-spacing:0;text-transform:none;color:var(--muted)}
 .pill{font-size:11px;font-weight:600;color:var(--muted);background:var(--surface-2);
   border:1px solid var(--hair);border-radius:999px;padding:4px 11px;white-space:nowrap}
 
@@ -2455,7 +2462,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     var camp = {};
     filas.forEach(function(r){
       var k = String(r.campania_id);
-      camp[k] = camp[k] || { nombre:r.campania, costo:0, clics:0, impr:0,
+      camp[k] = camp[k] || { id:k, nombre:r.campania, costo:0, clics:0, impr:0,
                              marca:(D.campanias_marca||[]).indexOf(k)>=0 };
       camp[k].costo += Number(r.costo)||0;
       camp[k].clics += Number(r.clics)||0;
@@ -2480,9 +2487,29 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     // igual que en las consultas: esa es su propia plata y su propia página.
     var insG = inscPorCanal()['Google Ads'] || 0;
 
-    $('p5-cuerpo').innerHTML = '<div class="kpis">' +
+    /* Consultas por campaña. Llegan en su propio informe, con el ID de campaña
+       como nexo: Analytics no deja pedir el costo y los eventos juntos, pero sí
+       en dos informes que después se unen acá. Mientras el backend no traiga
+       esta tabla, las columnas no se dibujan y el total sigue saliendo del
+       canal, como antes. */
+    var convC = {};
+    filtrar('google_ads_conv').forEach(function(r){
+      var k = String(r.campania_id);
+      convC[k] = (convC[k]||0) + (Number(r.n)||0);
+    });
+    var hayConv = Object.keys(convC).length > 0;
+    var convTot = Object.keys(convC).reduce(function(s,k){ return s+convC[k]; }, 0);
+    // Si hay detalle por campaña, manda ése: así la tarjeta de arriba y el
+    // total de la tabla dan el mismo número, que es la mitad del problema.
+    if(hayConv) lp = convTot;
+
+    $('p5-cuerpo').innerHTML =
+      '<div class="bloque">Google Ads <span class="fuente">— costos y consultas, vía Analytics</span></div>' +
+      '<div class="kpis">' +
       tarjeta('','Inversión Google', money(inv), n(clics)+' clics · '+n(impr)+' impresiones') +
-      tarjeta('','Consultas de Google', n(lp), 'atribuidas por Analytics, sin Paid Social') +
+      tarjeta('','Consultas de Google', n(lp),
+              hayConv ? 'atribuidas a sus campañas por Analytics'
+                      : 'atribuidas por Analytics, sin Paid Social') +
       tarjeta('','Cómo convierte', sesG?pc(lp/sesG*100):'—',
               sesG ? n(lp)+' consultas sobre '+n(sesG)+' sesiones' : 'sin sesiones en el período') +
       tarjeta('','Costo por consulta', lp?money(inv/lp):'—', 'inversión Google ÷ sus consultas') +
@@ -2494,16 +2521,26 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
       tarjeta('','Clics de marca', clics?Math.round(marca/clics*100)+'%':'—',
               'gente que ya buscaba UCINE por nombre') +
       '</div>' +
-      '<div class="card"><header><div><h2>Campaña por campaña</h2></div></header>' +
+      '<div class="card"><header><div><h2>Campaña por campaña · Google Ads</h2></div></header>' +
       '<div class="tw"><table><thead><tr><th>Campaña</th><th>Tipo</th><th>Impresiones</th>' +
-      '<th>Clics</th><th>Inversión</th><th>Costo / clic</th></tr></thead><tbody>' +
+      '<th>Clics</th><th>Inversión</th><th>Costo / clic</th>' +
+      (hayConv ? '<th>Consultas</th><th>Costo / consulta</th>' : '') +
+      '</tr></thead><tbody>' +
       lista.map(function(c){
+        var cv = convC[c.id] || 0;
         return '<tr><td>'+c.nombre+'</td><td>'+(c.marca?'Marca':'No-marca')+'</td><td>'+n(c.impr)+
           '</td><td>'+n(c.clics)+'</td><td>'+money(c.costo)+'</td><td>'+
-          (c.clics?money(c.costo/c.clics):'—')+'</td></tr>';
+          (c.clics?money(c.costo/c.clics):'—')+'</td>' +
+          (hayConv ? '<td>'+n(cv)+'<div class="sub">'+
+                     (c.clics ? pc(cv/c.clics*100)+' de sus clics' : '—')+'</div></td>' +
+                     '<td>'+(cv?money(c.costo/cv):'—')+'</td>' : '') +
+          '</tr>';
       }).join('') + '</tbody><tfoot><tr><td>Total</td><td></td><td>'+n(impr)+'</td><td>'+
-      n(clics)+'</td><td>'+money(inv)+'</td><td>'+(clics?money(inv/clics):'—')+
-      '</td></tr></tfoot></table></div></div>';
+      n(clics)+'</td><td>'+money(inv)+'</td><td>'+(clics?money(inv/clics):'—')+'</td>' +
+      (hayConv ? '<td>'+n(convTot)+'<div class="sub">'+
+                 (clics ? pc(convTot/clics*100)+' de sus clics' : '—')+'</div></td>' +
+                 '<td>'+(convTot?money(inv/convTot):'—')+'</td>' : '') +
+      '</tr></tfoot></table></div></div>';
 
     if(inscOk() && insG){
       nota('<div class="note"><strong>El costo por inscripto de Google sí es de la ' +
@@ -2514,10 +2551,21 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     }
     nota('<div class="note"><strong>Marca y no-marca se clasifican por ID de campaña, no por el ' +
       'nombre.</strong> Si alguien renombra la campaña, el tablero sigue funcionando igual.</div>');
-    nota('<div class="note"><strong>El costo por consulta no se puede abrir por ' +
-      'campaña.</strong> Analytics no permite pedir el costo y los eventos en el mismo ' +
-      'informe, así que la inversión llega por campaña y las consultas por canal. Para el ' +
-      'detalle por campaña hace falta la API de Google Ads.</div>');
+    if(hayConv){
+      nota('<div class="note"><strong>Las consultas de la tabla de Google son las que Analytics ' +
+        'le atribuye a cada campaña.</strong> Llegan en un informe aparte del costo, porque ' +
+        'Analytics no deja pedir las dos cosas juntas, y se unen por el ID de campaña. No son ' +
+        'las conversiones que informa Google Ads en su propia pantalla: Google cuenta con su ' +
+        'ventana de atribución y sus propias conversiones configuradas, así que ese número va a ' +
+        'ser distinto. Y tampoco son las consultas de la hoja de la universidad, que es el total ' +
+        'que manda en el Resumen — Analytics mide de menos. Acá lo que sirve es comparar ' +
+        'campañas entre sí, no el valor absoluto.</div>');
+    } else {
+      nota('<div class="note"><strong>Todavía no hay consultas por campaña de Google.</strong> ' +
+        'El informe que las trae se agregó al backend el 16-nov-2026: hasta que se guarde el ' +
+        'código, se corra <code>actualizar</code> y se publique una versión nueva, la tabla ' +
+        'muestra sólo costos y clics.</div>');
+    }
   }
 
   /* Meta. Cuenta compartida con FUCLAB: entran sólo las campañas cuyo nombre
@@ -2528,8 +2576,8 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     var f = (D.fuentes && D.fuentes.meta) || {};
 
     if(f.estado !== 'ok'){
-      caja.innerHTML = '<div class="card"><header><div><h2>Meta</h2>' +
-        '<p class="hint">Cuenta ' + (D.meta_cuenta||'—') + '</p></div></header>' +
+      caja.innerHTML = '<div class="bloque">Meta</div>' +
+        '<div class="card"><header><div><h2>Cuenta ' + (D.meta_cuenta||'—') + '</h2></div></header>' +
         '<div class="vacio"><strong>' +
         (f.estado === 'error' ? 'La API devolvió un error' : 'No conectado') + '</strong>' +
         (f.mensaje ? '<code>'+f.mensaje+'</code>' :
@@ -2539,7 +2587,8 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
 
     var filas = filtrar('meta');
     if(!filas.length){
-      caja.innerHTML = vacio('Meta sin datos en este período',
+      caja.innerHTML = '<div class="bloque">Meta</div>' +
+        vacio('Meta sin datos en este período',
         'La conexión funciona, pero no hay campañas con "' + (D.meta_filtro||'') +
         '" en el nombre con actividad en estas fechas.');
       return;
@@ -2572,6 +2621,8 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis);border-bottom:0;paddin
     var fuera = D.meta_excluidas || [];
 
     caja.innerHTML =
+      '<div class="bloque">Meta <span class="fuente">— números de la API de Meta, salvo donde ' +
+      'diga Analytics</span></div>' +
       '<div class="kpis">' +
       tarjeta('','Inversión Meta', money(inv), n(impr)+' impresiones · '+n(enlace)+' clics al sitio') +
       tarjeta('','Conversaciones de WhatsApp', n(convo),
